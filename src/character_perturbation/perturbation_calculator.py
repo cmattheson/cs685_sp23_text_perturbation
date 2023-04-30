@@ -3,6 +3,7 @@
 import pandas as pd
 import os
 import yaml
+from typing import Union
 
 """
 how to interpret each type of perturbation
@@ -17,7 +18,7 @@ how to interpret each type of perturbation
 
 class PerturbationCalculator:
 
-    def __init__(self, log_directory: str, default_cnt: int = 0, alphanumerics_only: bool = False):
+    def __init__(self, log_directory: str, default_cnt: Union[int, float] = 0, alphanumerics_only: bool = False):
 
         self.total_chars = 0
         self.log_directory = log_directory
@@ -116,7 +117,7 @@ class PerturbationCalculator:
             )
             if is_inserted_char:
                 self.insert_count += 1
-                self.insert_matrix.add_one(perturbed_text[perturbed_idx+1], perturbed_text[perturbed_idx])
+                self.insert_matrix.add_one(perturbed_text[perturbed_idx], perturbed_text[perturbed_idx+1])
                 perturbed_idx += 1
                 continue
 
@@ -147,7 +148,7 @@ class CharMatrixHandler:
     contains all functions necessary across all the different handlers
     """
 
-    def __init__(self, matrix_fp: str, default_cnt: int, alphanumerics_only: bool):
+    def __init__(self, matrix_fp: str, default_cnt: Union[int, float], alphanumerics_only: bool):
 
         self.matrix_fp = matrix_fp
         self.default_cnt = default_cnt
@@ -156,9 +157,9 @@ class CharMatrixHandler:
         self.matrix = self.generate_base_matrix(default_cnt=default_cnt, alphanumerics_only=alphanumerics_only)
 
     @staticmethod
-    def generate_base_matrix(default_cnt: int = 0, alphanumerics_only: bool = True) -> pd.DataFrame:
+    def generate_base_matrix(default_cnt: Union[int, float] = 0, alphanumerics_only: bool = True) -> pd.DataFrame:
 
-        ascii_chars = [chr(i) for i in range(33, 127)]
+        ascii_chars = [chr(i) for i in range(32, 127)]
         alphanumeric_chars = [
             *[chr(i) for i in range(48, 58)],
             *[chr(i) for i in range(65, 91)],
