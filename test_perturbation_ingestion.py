@@ -5,7 +5,7 @@ from src.character_perturbation.perturbation_calculator import PerturbationCalcu
 
 def main():
 
-    calc = PerturbationCalculator(log_directory=f'{os.path.dirname(__file__)}/logs', default_cnt=0.05)
+    calc = PerturbationCalculator(log_directory=f'{os.path.dirname(__file__)}/logs/character_perturbation', default_cnt=0.05)
     calc.check_for_text_pair_perturbations(
         'the quick brown fox jumped over the lazy dog',
         'the quick brown fox jumped over the lazy dog'

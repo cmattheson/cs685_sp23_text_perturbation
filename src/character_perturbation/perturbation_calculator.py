@@ -1,13 +1,13 @@
 
 # external libraries
 import pandas as pd
-import os
 import yaml
 from typing import Union
+import re
 
 """
 how to interpret each type of perturbation
- - check if it is the exact same character at the location in the "golden" text. If so, all good
+ - check if it is the exact same character at the location in the "original" text. If so, all good
  - insert: is the current char not correct and the next char is correct or not
  also confirm that it's not a transposition; maybe do transpose first, then replacement, then delete
  - delete: is the next character not the correct character and the length of the word has changed
@@ -53,67 +53,75 @@ class PerturbationCalculator:
 
     def ingest_perturbed_text_pairs(self, fp: str):
 
-        text_pair_df = pd.read_csv(fp, sep=',', header=0)
+        text_pair_df = pd.read_csv(fp, sep=',', header=0, encoding='ISO-8859-1')
         self.run_all_text_pairs(text_pair_df)
         self.store_results()
 
     def run_all_text_pairs(self, text_pair_df: pd.DataFrame):
 
         for i in range(len(text_pair_df)):
-            golden_text = text_pair_df.iloc[i, 0]
-            perturbed_text = text_pair_df.iloc[i, 1]
-            self.check_for_text_pair_perturbations(golden_text, perturbed_text)
+            original_text = self.clean_whitespace(text_pair_df.iloc[i, 0])
+            perturbed_text = self.clean_whitespace(text_pair_df.iloc[i, 1])
+            self.check_for_text_pair_perturbations(original_text, perturbed_text)
 
-    def check_for_text_pair_perturbations(self, golden_text: str, perturbed_text: str):
+    def clean_whitespace(self, s: str) -> str:
 
-        golden_idx = 0
+        cleaned_s = re.sub('\s+', ' ', s.strip())
+
+        return cleaned_s
+
+    def check_for_text_pair_perturbations(self, original_text: str, perturbed_text: str):
+
+        original_idx = 0
         perturbed_idx = 0
-        max_golden_idx = len(golden_text)
-        max_perturbed_idx = len(perturbed_text)
+        max_original_idx = len(original_text) - 1
+        max_perturbed_idx = len(perturbed_text) - 1
 
-        while golden_idx < max_golden_idx and perturbed_idx < max_perturbed_idx:
+        while original_idx < max_original_idx and perturbed_idx < max_perturbed_idx:
             self.total_chars += 1
+            original_char = original_text[original_idx]
+            perturbed_char = perturbed_text[perturbed_idx]
 
-            is_correct_char = golden_text[golden_idx] == perturbed_text[perturbed_idx]
+            is_correct_char = original_text[original_idx] == perturbed_text[perturbed_idx]
             if is_correct_char:
-                golden_idx += 1
+                original_idx += 1
                 perturbed_idx += 1
                 continue
 
             is_transposed_char = (
-                golden_text[golden_idx] == perturbed_text[perturbed_idx+1]
-                and golden_text[golden_idx+1] == perturbed_text[perturbed_idx]
+                original_text[original_idx] == perturbed_text[perturbed_idx+1]
+                and original_text[original_idx+1] == perturbed_text[perturbed_idx]
             )
             if is_transposed_char:
                 self.transpose_count += 1
-                self.transpose_matrix.add_one(golden_text[golden_idx], golden_text[golden_idx+1])
-                golden_idx += 2
+                self.transpose_matrix.add_one(original_text[original_idx], original_text[original_idx+1])
+                original_idx += 2
                 perturbed_idx += 2
                 continue
 
             is_replaced_char = (
-                golden_text[golden_idx] != perturbed_text[perturbed_idx]
-                and golden_text[golden_idx+1] == perturbed_text[perturbed_idx+1]
+                original_text[original_idx] != perturbed_text[perturbed_idx]
+                and original_text[original_idx+1] == perturbed_text[perturbed_idx+1]
             )
             if is_replaced_char:
                 self.replace_count += 1
-                self.replace_matrix.add_one(golden_text[golden_idx], perturbed_text[perturbed_idx])
-                golden_idx += 1
+                self.replace_matrix.add_one(original_text[original_idx], perturbed_text[perturbed_idx])
+                original_idx += 1
                 perturbed_idx += 1
                 continue
 
             is_deleted_char = (
-                golden_text[golden_idx] != perturbed_text[perturbed_idx]
-                and golden_text[golden_idx+1] == perturbed_text[perturbed_idx]
+                original_text[original_idx] != perturbed_text[perturbed_idx]
+                and original_text[original_idx+1] == perturbed_text[perturbed_idx]
             )
             if is_deleted_char:
                 self.delete_count += 1
                 self.delete_matrix.add_one(perturbed_text[perturbed_idx], perturbed_text[perturbed_idx])
-                golden_idx += 1
+                original_idx += 1
                 continue
 
             is_inserted_char = (
-                golden_text[golden_idx] != perturbed_text[perturbed_idx]
+                original_text[original_idx] != perturbed_text[perturbed_idx]
             )
             if is_inserted_char:
                 self.insert_count += 1
