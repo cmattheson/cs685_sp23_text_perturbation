@@ -76,8 +76,10 @@ class PerturbationCalculator:
         perturbed_idx = 0
         max_original_idx = len(original_text) - 1
         max_perturbed_idx = len(perturbed_text) - 1
+        diff = abs(max_original_idx - max_perturbed_idx)
+        is_deletion = max_original_idx > max_perturbed_idx
 
-        while original_idx < max_original_idx and perturbed_idx < max_perturbed_idx:
+        while original_idx <= max_original_idx and perturbed_idx <= max_perturbed_idx:
             self.total_chars += 1
             original_char = original_text[original_idx]
             perturbed_char = perturbed_text[perturbed_idx]
@@ -89,8 +91,8 @@ class PerturbationCalculator:
                 continue
 
             is_transposed_char = (
-                original_text[original_idx] == perturbed_text[perturbed_idx+1]
-                and original_text[original_idx+1] == perturbed_text[perturbed_idx]
+                original_text[original_idx] == perturbed_text[min(max_perturbed_idx, perturbed_idx+1)]
+                and original_text[min(max_original_idx, original_idx+1)] == perturbed_text[perturbed_idx]
             )
             if is_transposed_char:
                 self.transpose_count += 1
@@ -101,7 +103,11 @@ class PerturbationCalculator:
 
             is_replaced_char = (
                 original_text[original_idx] != perturbed_text[perturbed_idx]
-                and original_text[original_idx+1] == perturbed_text[perturbed_idx+1]
+                and (
+                    original_text[min(max_original_idx, original_idx+1)] == perturbed_text[min(max_perturbed_idx, perturbed_idx+1)]
+                    or original_text[min(max_original_idx, original_idx+2)] == perturbed_text[min(max_perturbed_idx, perturbed_idx+2)]
+                    or original_text[min(max_original_idx, original_idx+3)] == perturbed_text[min(max_perturbed_idx, perturbed_idx+3)]
+                )
             )
             if is_replaced_char:
                 self.replace_count += 1
@@ -110,24 +116,48 @@ class PerturbationCalculator:
                 perturbed_idx += 1
                 continue
 
-            is_deleted_char = (
-                original_text[original_idx] != perturbed_text[perturbed_idx]
-                and original_text[original_idx+1] == perturbed_text[perturbed_idx]
-            )
-            if is_deleted_char:
+            if diff > 0 and is_deletion:
                 self.delete_count += 1
                 self.delete_matrix.add_one(perturbed_text[perturbed_idx], perturbed_text[perturbed_idx])
                 original_idx += 1
+                diff -= 1
                 continue
 
-            is_inserted_char = (
-                original_text[original_idx] != perturbed_text[perturbed_idx]
-            )
-            if is_inserted_char:
+            if diff > 0 and not is_deletion:
                 self.insert_count += 1
-                self.insert_matrix.add_one(perturbed_text[perturbed_idx], perturbed_text[perturbed_idx+1])
+                self.insert_matrix.add_one(perturbed_text[perturbed_idx], perturbed_text[perturbed_idx])
+                diff -= 1
                 perturbed_idx += 1
                 continue
+
+            # if all other terms fail, it would be a replacement
+            self.replace_count += 1
+            self.replace_matrix.add_one(original_text[original_idx], perturbed_text[perturbed_idx])
+            original_idx += 1
+            perturbed_idx += 1
+            continue
+
+
+            # is_deleted_char = (
+            #     original_text[original_idx] != perturbed_text[perturbed_idx]
+            #     and original_text[original_idx+1] == perturbed_text[perturbed_idx]
+            # )
+            # if is_deleted_char:
+            #     self.delete_count += 1
+            #     self.delete_matrix.add_one(perturbed_text[perturbed_idx], perturbed_text[perturbed_idx])
+            #     original_idx += 1
+            #     diff -= 1
+            #     continue
+            #
+            # is_inserted_char = (
+            #     original_text[original_idx] != perturbed_text[perturbed_idx]
+            # )
+            # if is_inserted_char:
+            #     self.insert_count += 1
+            #     self.insert_matrix.add_one(perturbed_text[perturbed_idx], perturbed_text[perturbed_idx+1])
+            #     perturbed_idx += 1
+            #     diff -= 1
+            #     continue
 
     def write_counts_to_yaml(self):
 
