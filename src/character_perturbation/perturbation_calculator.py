@@ -142,7 +142,6 @@ class PerturbationCalculator:
             yaml.dump(counts_dct, stream=file)
 
     def store_results(self):
-        # TODO: write out each table and a yaml file of the counts of different perturbations
         self.insert_matrix.write_matrix()
         self.delete_matrix.write_matrix()
         self.replace_matrix.write_matrix()
