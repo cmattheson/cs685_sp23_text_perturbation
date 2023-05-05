@@ -18,14 +18,19 @@ class Bert_Plus_Elmo(nn.Module):
         self.elmo_projection = nn.Linear(128, 768)
 
 
-    def forward(self, bert_input_ids, elmo_input_ids, attention_mask=None):
-        input_shape = bert_input_ids.size()
+    def forward(self, input_ids, elmo_input_ids, attention_mask=None):
+        seq_len = input_ids.shape[1]
+        position_ids = self.bert.embeddings.position_ids[:, :seq_len]
+        position_embedding = self.bert.embeddings.position_embeddings(position_ids)
+        input_shape = input_ids.size()
         extended_attention_mask: torch.Tensor = self.bert.get_extended_attention_mask(attention_mask, input_shape)
-        bert_embedding = self.bert.embeddings.word_embeddings(bert_input_ids)
+        bert_embedding = self.bert.embeddings.word_embeddings(input_ids)
         elmo_embedding = self.elmo_projection(self.elmo_embedder(elmo_input_ids)['token_embedding'])
         elmo_embedding[:, 1:, :] = 0 # zero out the embeddings for the BOS token
         elmo_embedding[:, -1, :] = 0 # zero out the embeddings for the EOS token
-        embeddings = bert_embedding + elmo_embedding
+        embeddings = bert_embedding + elmo_embedding + position_embedding
+        embeddings = self.bert.embeddings.layer_norm(embeddings)
+        embeddings = self.bert.embeddings.dropout(embeddings)
         output_representations = self.bert.encoder(
             embeddings,
             attention_mask=extended_attention_mask,
