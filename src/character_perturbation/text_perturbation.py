@@ -75,22 +75,22 @@ class CharacterReplacementGenerator:
 
 class TextPerturbationHandler:
 
-    def __init__(self, log_directory: str):
+    def __init__(self, log_directory: str, perturbation_weight: float = 1):
 
         perturb_cnts = self.load_logged_perturbation_counts(log_directory=log_directory)
         self.total_chars = int(perturb_cnts.get('total_chars'))
 
         self.insert_cnt = int(perturb_cnts.get('insert_count'))
-        self.pct_insert = self.insert_cnt / self.total_chars
+        self.pct_insert = self.insert_cnt * perturbation_weight / self.total_chars
 
         self.delete_cnt = int(perturb_cnts.get('delete_count'))
-        self.pct_delete = self.delete_cnt / self.total_chars
+        self.pct_delete = self.delete_cnt * perturbation_weight / self.total_chars
 
         self.transpose_cnt = int(perturb_cnts.get('transpose_count'))
-        self.pct_transpose = self.transpose_cnt / self.total_chars
+        self.pct_transpose = self.transpose_cnt * perturbation_weight / self.total_chars
 
         self.replace_cnt = int(perturb_cnts.get('replace_count'))
-        self.pct_replace = self.replace_cnt / self.total_chars
+        self.pct_replace = self.replace_cnt * perturbation_weight / self.total_chars
 
         self.insert_generator = CharacterInsertionGenerator(log_directory=log_directory)
         self.replacement_generator = CharacterReplacementGenerator(log_directory=log_directory)

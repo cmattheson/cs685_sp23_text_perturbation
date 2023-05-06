@@ -67,6 +67,7 @@ class PerturbationCalculator:
     def clean_whitespace(self, s: str) -> str:
 
         cleaned_s = re.sub('\s+', ' ', s.strip())
+        cleaned_s = re.sub('/', '.', cleaned_s)
 
         return cleaned_s
 
@@ -116,17 +117,48 @@ class PerturbationCalculator:
                 perturbed_idx += 1
                 continue
 
-            if diff > 0 and is_deletion:
+            # if diff > 0 and is_deletion:
+            #     self.delete_count += 1
+            #     self.delete_matrix.add_one(perturbed_text[perturbed_idx], perturbed_text[perturbed_idx])
+            #     original_idx += 1
+            #     diff -= 1
+            #     continue
+            #
+            # if diff > 0 and not is_deletion:
+            #     self.insert_count += 1
+            #     self.insert_matrix.add_one(perturbed_text[perturbed_idx], perturbed_text[perturbed_idx])
+            #     diff -= 1
+            #     perturbed_idx += 1
+            #     continue
+            #
+            # # if all other terms fail, it would be a replacement
+            # self.replace_count += 1
+            # self.replace_matrix.add_one(original_text[original_idx], perturbed_text[perturbed_idx])
+            # original_idx += 1
+            # perturbed_idx += 1
+            # continue
+
+            is_deleted_char = (
+                original_text[original_idx] != perturbed_text[perturbed_idx]
+                and (original_text[min(max_original_idx, original_idx+1)] == perturbed_text[perturbed_idx]
+                     or original_text[min(max_original_idx, original_idx+2)] == perturbed_text[perturbed_idx]
+                     or original_text[min(max_original_idx, original_idx+3)] == perturbed_text[perturbed_idx])
+            )
+            if is_deleted_char:
                 self.delete_count += 1
                 self.delete_matrix.add_one(perturbed_text[perturbed_idx], perturbed_text[perturbed_idx])
                 original_idx += 1
-                diff -= 1
                 continue
 
-            if diff > 0 and not is_deletion:
+            is_inserted_char = (
+                original_text[original_idx] != perturbed_text[perturbed_idx]
+                and (original_text[original_idx] == perturbed_text[min(max_perturbed_idx, perturbed_idx+1)]
+                     or original_text[original_idx] == perturbed_text[min(max_perturbed_idx, perturbed_idx+2)]
+                     or original_text[original_idx] == perturbed_text[min(max_perturbed_idx, perturbed_idx+3)])
+            )
+            if is_inserted_char:
                 self.insert_count += 1
-                self.insert_matrix.add_one(perturbed_text[perturbed_idx], perturbed_text[perturbed_idx])
-                diff -= 1
+                self.insert_matrix.add_one(perturbed_text[perturbed_idx], perturbed_text[min(max_perturbed_idx, perturbed_idx+1)])
                 perturbed_idx += 1
                 continue
 
@@ -136,28 +168,6 @@ class PerturbationCalculator:
             original_idx += 1
             perturbed_idx += 1
             continue
-
-
-            # is_deleted_char = (
-            #     original_text[original_idx] != perturbed_text[perturbed_idx]
-            #     and original_text[original_idx+1] == perturbed_text[perturbed_idx]
-            # )
-            # if is_deleted_char:
-            #     self.delete_count += 1
-            #     self.delete_matrix.add_one(perturbed_text[perturbed_idx], perturbed_text[perturbed_idx])
-            #     original_idx += 1
-            #     diff -= 1
-            #     continue
-            #
-            # is_inserted_char = (
-            #     original_text[original_idx] != perturbed_text[perturbed_idx]
-            # )
-            # if is_inserted_char:
-            #     self.insert_count += 1
-            #     self.insert_matrix.add_one(perturbed_text[perturbed_idx], perturbed_text[perturbed_idx+1])
-            #     perturbed_idx += 1
-            #     diff -= 1
-            #     continue
 
     def write_counts_to_yaml(self):
 
