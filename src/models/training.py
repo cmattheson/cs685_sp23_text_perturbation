@@ -5,6 +5,7 @@ import torch.nn as nn
 from tqdm import tqdm
 from allennlp.modules.elmo import batch_to_ids
 from transformers import BertTokenizer
+from bert_models import ElmoBertModel
 
 
 def prepare_data(data: tuple[tuple[str], torch.tensor],
@@ -36,12 +37,13 @@ def prepare_data(data: tuple[tuple[str], torch.tensor],
         model_kwargs = {'input_ids': bert_input_ids, 'attention_mask': attention_mask}
     return model_kwargs, labels
 
+
 def compute_statistics(model: nn.Module,
                        criterion: Callable,
                        dataloader: torch.utils.data.DataLoader,
                        tokenizer: BertTokenizer,
                        require_elmo_embeddings: bool = True,
-                       device: str ='cuda') \
+                       device: str = 'cuda') \
         -> tuple[float, float]:
     """
 
@@ -59,7 +61,6 @@ def compute_statistics(model: nn.Module,
     pbar = tqdm(dataloader)
     loss = 0
     num_correct = 0
-    phases = []
     for i, data in enumerate(pbar):
         """
         model_kwargs, labels = prepare_data(data,
@@ -75,11 +76,12 @@ def compute_statistics(model: nn.Module,
             with torch.no_grad():
                 out = model(input_ids, elmo_input_ids, attention_mask)
         else:
-            input_ids, elmo_input_ids, attention_mask, labels = data[0].to(device), data[1].to(device), data[2].to(device)
+            input_ids, elmo_input_ids, attention_mask, labels = data[0].to(device), data[1].to(device), data[2].to(
+                device)
             with torch.no_grad():
                 out = model(input_ids, attention_mask)
 
-        it_loss =  criterion(out.squeeze(), labels.to(torch.float32), reduction='sum').item()
+        it_loss = criterion(out.squeeze(), labels.to(torch.float32), reduction='sum').item()
         it_num_correct = torch.sum(torch.round(torch.sigmoid(out.squeeze())) == labels).item()
         num_correct += it_num_correct
         loss += it_loss
@@ -89,29 +91,30 @@ def compute_statistics(model: nn.Module,
     accuracy = num_correct / len(dataloader.dataset)
     return loss / len(dataloader.dataset), accuracy / len(dataloader.dataset)
 
+
 def train(model: nn.Module,
           train_loader: torch.utils.data.DataLoader,
           criterion: Callable,
           optim: torch.optim.Optimizer,
           tokenizer: BertTokenizer,
-          num_epochs: int = 1,
+          *,
+          num_epochs: int = None,
           device: str = 'cuda',
-          require_elmo_embeddings: bool = True,
           record_training_statistics: bool = False,
           record_time_statistics: bool = False,
           save_model_parameters: bool = False,
-          *args,
+          phases: list[dict[str, int]] = None,
           **kwargs
           ) -> dict[str, list[float]] or None:
     """
 
     Args:
-        device:
-        require_elmo_embeddings:
-        save_model_parameters:
-        record_time_statistics:
+        phases: the phases, a dict where the key is the phase name and the value is the number of epochs to train for
+        device: the device to train on, default 'cuda'
+        save_model_parameters: whether to save the model parameters
+        record_time_statistics: whether to record the time statistics
         record_training_statistics: whether to record the training statistics
-        model: the model
+        model: the model to train
         train_loader: training DataLoader
         criterion: the objective function
         optim: the optimizer
@@ -121,71 +124,84 @@ def train(model: nn.Module,
     Returns:
 
     """
+    assert not phases or not num_epochs, 'Either specify the number of epochs or the phases'
     import time
 
     statistics = {'training_loss': [], 'validation_loss': [], 'test_loss': [],
                   'training_accuracy': [], 'validation_accuracy': [], 'test_accuracy': [],
                   'total_time': None, 'model_compute_time': None, 'preprocessing_time': None}
-
-
+    if isinstance(model.encoder, ElmoBertModel):
+        print('Using ElmoBertModel')
+        require_elmo_embeddings: bool = True
+    else:
+        require_elmo_embeddings: bool = False
+        print('Using BertModel')
     model.train()
     model.to(device)
     time_start = time.time()
     time_train = 0
     time_eval = 0
-    for epoch in range(num_epochs):
-        pbar = tqdm(train_loader)
-        model.train()
-        for i, data in enumerate(pbar): # iterate over the perturbed sequences
-            optim.zero_grad()
-            """model_kwargs, labels = prepare_data(data,
-                                        tokenizer,
-                                        require_elmo_embeddings=require_elmo_embeddings,
-                                        device=device)
-            """
-            #out = model(**model_kwargs)
-            if require_elmo_embeddings:
-                input_ids, elmo_input_ids, attention_mask, labels = data[0].to(device), \
-                    data[1].to(device), data[2].to(device), data[3].to(device)
-                time_start_forward = time.time()
-                out = model(input_ids, elmo_input_ids, attention_mask=attention_mask)
-            else:
-                input_ids, attention_mask, labels = data[0].to(device), data[1].to(device), data[2].to(device)
-                time_start_forward = time.time()
-                out = model(input_ids, attention_mask)
-            loss = criterion(out.squeeze(), labels.to(torch.float32))
-            loss.backward()
-            time_finish_backward = time.time()
-            time_train += time_finish_backward - time_start_forward
+    if not phases and not num_epochs:
+        num_epochs = 1
+        phases = {'finetune': num_epochs}
+    for phase, num_epochs in phases.items():
+        print(f'Phase: {phase}')
+        model.setPhase(phase)
+        for epoch in range(num_epochs):
+            pbar = tqdm(train_loader)
+            model.train()
+            for i, data in enumerate(pbar):  # iterate over the perturbed sequences
+                optim.zero_grad()
+                """model_kwargs, labels = prepare_data(data,
+                                            tokenizer,
+                                            require_elmo_embeddings=require_elmo_embeddings,
+                                            device=device)
+                """
+                # out = model(**model_kwargs)
+                if require_elmo_embeddings:
+                    input_ids, elmo_input_ids, attention_mask, labels = data[0].to(device), \
+                        data[1].to(device), data[2].to(device), data[3].to(device)
+                    time_start_forward = time.time()
+                    out = model(input_ids, elmo_input_ids, attention_mask=attention_mask)
+                else:
+                    input_ids, attention_mask, labels = data[0].to(device), data[1].to(device), data[2].to(device)
+                    time_start_forward = time.time()
+                    out = model(input_ids, attention_mask)
+                loss = criterion(out.squeeze(), labels.to(torch.float32))
+                loss.backward()
+                time_finish_backward = time.time()
+                time_train += time_finish_backward - time_start_forward
 
-            if record_training_statistics:
-                statistics['training_loss'].append(loss.item())
-                statistics['training_accuracy'].append(torch.sum(torch.round(torch.sigmoid(out.squeeze())) == labels).item() / len(labels))
+                if record_training_statistics:
+                    statistics['training_loss'].append(loss.item())
+                    statistics['training_accuracy'].append(
+                        torch.sum(torch.round(torch.sigmoid(out.squeeze())) == labels).item() / len(labels))
 
-            pbar.set_description(
-                f'it: {len(pbar) * epoch + i + 1} / {len(pbar) * num_epochs} epoch: {epoch + 1} / {num_epochs} loss: {loss.item()}')
-            optim.step()
+                pbar.set_description(
+                    f'it: {len(pbar) * epoch + i + 1} / {len(pbar) * num_epochs} epoch: {epoch + 1} / {num_epochs} loss: {loss.item()}')
+                optim.step()
 
-        time_eval_start = time.time()
-        if 'val_loader' in kwargs:
-            val_loss, val_accuracy = compute_statistics(model,
-                                                        criterion,
-                                                        kwargs['val_loader'],
-                                                        tokenizer,
-                                                        require_elmo_embeddings=require_elmo_embeddings, device=device)
-            statistics['validation_loss'].append(val_loss)
-            statistics['validation_accuracy'].append(val_accuracy)
-        if 'test_loader' in kwargs:
-            test_loss, test_accuracy = compute_statistics(model,
-                                                          criterion,
-                                                          kwargs['test_loader'],
-                                                          tokenizer,
-                                                          require_elmo_embeddings=require_elmo_embeddings,
-                                                          device=device)
-            statistics['test_loss'].append(test_loss)
-            statistics['test_accuracy'].append(test_accuracy)
-        time_eval_finish = time.time()
-        time_eval += time_eval_finish - time_eval_start
+            time_eval_start = time.time()
+            if 'val_loader' in kwargs:
+                val_loss, val_accuracy = compute_statistics(model,
+                                                            criterion,
+                                                            kwargs['val_loader'],
+                                                            tokenizer,
+                                                            require_elmo_embeddings=require_elmo_embeddings,
+                                                            device=device)
+                statistics['validation_loss'].append(val_loss)
+                statistics['validation_accuracy'].append(val_accuracy)
+            if 'test_loader' in kwargs:
+                test_loss, test_accuracy = compute_statistics(model,
+                                                              criterion,
+                                                              kwargs['test_loader'],
+                                                              tokenizer,
+                                                              require_elmo_embeddings=require_elmo_embeddings,
+                                                              device=device)
+                statistics['test_loss'].append(test_loss)
+                statistics['test_accuracy'].append(test_accuracy)
+            time_eval_finish = time.time()
+            time_eval += time_eval_finish - time_eval_start
 
     # record the total time to finish all operations
     time_finish = time.time()
@@ -198,10 +214,6 @@ def train(model: nn.Module,
         """
         torch.save(model.state_dict(), 'model_parameters.pt')
 
-
-
-
-
     if record_time_statistics:
         statistics['total_time'] = total_time
         statistics['model_compute_time'] = time_train
@@ -212,19 +224,17 @@ def train(model: nn.Module,
     return statistics
 
 
-
-
-if __name__=='__main__':
+if __name__ == '__main__':
     from transformers import BertTokenizer
-    from bert_models import Bert_Plus_Elmo_Concat
+    from bert_models import Bert_Plus_Elmo_Concat, Bert_Plus_Elmo
     from bert_models import BinaryClassifierModel
 
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
+    encoder = Bert_Plus_Elmo_Concat()
+    encoder = Bert_Plus_Elmo()
 
-    myModel = Bert_Plus_Elmo_Concat()
-
-    optim = torch.optim.Adam(myModel.parameters(), lr=0.00003)
+    optim = torch.optim.Adam(encoder.parameters(), lr=0.00003)
     criterion = torch.nn.functional.binary_cross_entropy_with_logits
     from datasets import PerturbedSequenceDataset, PerturbedSequenceDataset2
 
@@ -236,13 +246,13 @@ if __name__=='__main__':
 
     dataloader = DataLoader(dataset, batch_size=64, num_workers=1, shuffle=True)
 
-
+    # create a binary classifier head
     classifier_head = nn.Linear(768, 1)
-    m = BinaryClassifierModel(encoder=myModel, classifier=classifier_head)
-
-    statistics = train(m, dataloader, criterion, optim, tokenizer, 5, device='cuda',
-          record_training_statistics=True,
-          record_time_statistics=True)
-
+    model = BinaryClassifierModel(encoder=encoder, classifier=classifier_head)
+    phases = {'warmup': 5, 'elmo': 1, 'finetune': 5}
+    statistics = train(model, dataloader, criterion, optim, tokenizer, device='cuda',
+                       phases=phases,
+                       record_training_statistics=True,
+                       record_time_statistics=True)
 
     print(statistics)
