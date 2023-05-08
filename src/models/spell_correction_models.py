@@ -1,8 +1,5 @@
-import math
-
 import torch
 import torch.nn as nn
-from torch import Tensor
 from torch.nn.functional import relu
 from allennlp.modules.transformer.positional_encoding import SinusoidalPositionalEncoding
 
@@ -53,8 +50,8 @@ class NetNoPosEncoding(nn.Module):
         return self.classifier(x)
 
 class TransformerModel(nn.Module):
-    def __init__(self, vocab_size, d_model=256, max_word_length=30, nhead=4, num_encoder_layers=2,
-                 dim_feedforward=64, dropout=0.1):
+    def __init__(self, vocab_size, d_model=128, max_word_length=30, nhead=8, num_encoder_layers=2,
+                 dim_feedforward=128, dropout=0.1):
         super().__init__()
         self.pos = SinusoidalPositionalEncoding()
         self.max_word_length = max_word_length
@@ -74,3 +71,4 @@ class TransformerModel(nn.Module):
         x = x[:, 0, :]
         x = self.transformer_encoder(x)
         return self.classifier(x)
+
