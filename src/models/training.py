@@ -6,8 +6,24 @@ from tqdm import tqdm
 from allennlp.modules.elmo import batch_to_ids
 from transformers import BertTokenizer
 
-def prepare_data(data, tokenizer, require_elmo_embeddings=True, device='cuda'):
+
+def prepare_data(data: tuple[tuple[str], torch.tensor],
+                 tokenizer: BertTokenizer,
+                 require_elmo_embeddings: bool = True,
+                 device: str = 'cuda'):
+    """
+
+    Args:
+        data:
+        tokenizer:
+        require_elmo_embeddings:
+        device:
+
+    Returns:
+
+    """
     sequences, labels = data
+    print(type(sequences[0]))
     labels = labels.to(device)
     encoded_input = tokenizer(sequences, return_tensors='pt', padding=True, truncation=True)
 
@@ -42,19 +58,35 @@ def compute_statistics(model: nn.Module,
     """
     pbar = tqdm(dataloader)
     loss = 0
-    accuracy = 0
+    num_correct = 0
+    phases = []
     for i, data in enumerate(pbar):
+        """
         model_kwargs, labels = prepare_data(data,
                                             tokenizer,
                                             require_elmo_embeddings=require_elmo_embeddings,
                                             device=device)
+        """
         model.eval()
-        with torch.no_grad():
-            out = model(**model_kwargs)
+
+        if require_elmo_embeddings:
+            input_ids, elmo_input_ids, attention_mask, labels = data[0].to(device), \
+                data[1].to(device), data[2].to(device), data[3].to(device)
+            with torch.no_grad():
+                out = model(input_ids, elmo_input_ids, attention_mask)
+        else:
+            input_ids, elmo_input_ids, attention_mask, labels = data[0].to(device), data[1].to(device), data[2].to(device)
+            with torch.no_grad():
+                out = model(input_ids, attention_mask)
+
         it_loss =  criterion(out.squeeze(), labels.to(torch.float32), reduction='sum').item()
+        it_num_correct = torch.sum(torch.round(torch.sigmoid(out.squeeze())) == labels).item()
+        num_correct += it_num_correct
         loss += it_loss
         pbar.set_description(
-            f'it: {i + 1} / {len(dataloader)} loss: {it_loss}')
+            f'it: {i + 1} / {len(dataloader)} loss: {it_loss / len(data[0])}')
+
+    accuracy = num_correct / len(dataloader.dataset)
     return loss / len(dataloader.dataset), accuracy / len(dataloader.dataset)
 
 def train(model: nn.Module,
@@ -106,19 +138,30 @@ def train(model: nn.Module,
         model.train()
         for i, data in enumerate(pbar): # iterate over the perturbed sequences
             optim.zero_grad()
-            model_kwargs, labels = prepare_data(data,
+            """model_kwargs, labels = prepare_data(data,
                                         tokenizer,
                                         require_elmo_embeddings=require_elmo_embeddings,
                                         device=device)
-            time_start_forward = time.time()
-            out = model(**model_kwargs)
-
+            """
+            #out = model(**model_kwargs)
+            if require_elmo_embeddings:
+                input_ids, elmo_input_ids, attention_mask, labels = data[0].to(device), \
+                    data[1].to(device), data[2].to(device), data[3].to(device)
+                time_start_forward = time.time()
+                out = model(input_ids, elmo_input_ids, attention_mask=attention_mask)
+            else:
+                input_ids, attention_mask, labels = data[0].to(device), data[1].to(device), data[2].to(device)
+                time_start_forward = time.time()
+                out = model(input_ids, attention_mask)
             loss = criterion(out.squeeze(), labels.to(torch.float32))
             loss.backward()
-            if record_training_statistics:
-                statistics['training_loss'].append(loss.item())
             time_finish_backward = time.time()
             time_train += time_finish_backward - time_start_forward
+
+            if record_training_statistics:
+                statistics['training_loss'].append(loss.item())
+                statistics['training_accuracy'].append(torch.sum(torch.round(torch.sigmoid(out.squeeze())) == labels).item() / len(labels))
+
             pbar.set_description(
                 f'it: {len(pbar) * epoch + i + 1} / {len(pbar) * num_epochs} epoch: {epoch + 1} / {num_epochs} loss: {loss.item()}')
             optim.step()
@@ -144,6 +187,9 @@ def train(model: nn.Module,
         time_eval_finish = time.time()
         time_eval += time_eval_finish - time_eval_start
 
+    # record the total time to finish all operations
+    time_finish = time.time()
+    total_time = time_finish - time_start
 
     if save_model_parameters:
         """
@@ -154,8 +200,7 @@ def train(model: nn.Module,
 
 
 
-    time_finish = time.time()
-    total_time = time_finish - time_start
+
 
     if record_time_statistics:
         statistics['total_time'] = total_time
@@ -179,26 +224,25 @@ if __name__=='__main__':
 
     myModel = Bert_Plus_Elmo_Concat()
 
-    optim = torch.optim.Adam(myModel.parameters(), lr=0.0001)
+    optim = torch.optim.Adam(myModel.parameters(), lr=0.00003)
     criterion = torch.nn.functional.binary_cross_entropy_with_logits
-    from datasets import PerturbedSequenceDataset
+    from datasets import PerturbedSequenceDataset, PerturbedSequenceDataset2
 
     data = [('I loved the movie Guardians of the Galaxy 3', 1),
-            ('I hated the movie Guardians of the Galaxy 3', 0)] * 64
+            ('I hated the movie Guardians of the Galaxy 3', 0)] * 1000
 
-    dataset = PerturbedSequenceDataset(data, log_directory='../../logs/character_perturbation')
+    dataset = PerturbedSequenceDataset2(data, tokenizer=tokenizer, log_directory='../../logs/character_perturbation')
     from torch.utils.data import DataLoader
 
-    dataloader = DataLoader(dataset, batch_size=32, num_workers=0, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=64, num_workers=1, shuffle=True)
 
 
     classifier_head = nn.Linear(768, 1)
     m = BinaryClassifierModel(encoder=myModel, classifier=classifier_head)
 
-    statistics = train(m, dataloader, criterion, optim, tokenizer, 1, device='cuda',
+    statistics = train(m, dataloader, criterion, optim, tokenizer, 5, device='cuda',
           record_training_statistics=True,
-          record_time_statistics=True,
-          save_model_parameters=True, val_loader=dataloader)
+          record_time_statistics=True)
 
 
     print(statistics)
