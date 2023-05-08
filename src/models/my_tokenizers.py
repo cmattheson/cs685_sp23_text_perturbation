@@ -1,7 +1,46 @@
 import torch
 import random
 
+from transformers import BertTokenizer
+from allennlp.modules.elmo import batch_to_ids
 
+
+test_seqs = ['this is a test', 'this is another test']
+class LMSpellcheckderTokenizer:
+    def __init__(self, vocab):
+        characters = [*'abcdefghijklmnopqrstuvwxyz']
+        self.char_tokens = dict()
+        self.word_tokens = dict()
+        self.labels = dict()
+        self.max_word_length = 0
+        self.vocab = vocab
+
+        self.char_tokens['<pad>'] = 0
+        self.char_tokens['<cls>'] = 27
+        for i, char in enumerate(characters):
+            self.char_tokens[char] = i + 1
+
+    def tokenize(self, x: str or list):
+        if isinstance(x, str):
+            words = [x]
+        else:
+            words = x
+        sequences = []
+        for word in words:
+            ctokens = [self.char_tokens['<cls>']]
+            for char in word:
+                ctokens.append(self.char_tokens[char])
+            while len(ctokens) < 30:
+                ctokens.append(self.char_tokens['<pad>'])
+            sequences.append(ctokens)
+
+        tokens = torch.tensor(sequences).squeeze()
+        return tokens
+
+    def attention_mask(self, n):
+        x = torch.arange(0, n)
+        y = x.view(-1, 1)
+        mask = torch.where(x <= y, 1, 0)
 class Tokenizer:
     def __init__(self, vocab):
         characters = [*'abcdefghijklmnopqrstuvwxyz']
@@ -10,6 +49,7 @@ class Tokenizer:
         self.labels = dict()
         self.num_classes = len(vocab)
         self.max_word_length = 0
+        self.vocab = vocab
 
 
         self.char_tokens['<pad>'] = 0
@@ -23,7 +63,6 @@ class Tokenizer:
             self.labels[word] = i
 
     def __call__(self, words):
-
         return self.tokenize_chars(words)
     def tokenize_chars(self, word):
         if isinstance(word, str):
@@ -41,6 +80,17 @@ class Tokenizer:
 
         tokens = torch.tensor(sequences).squeeze()
         return tokens
+    def detokenize(self, tokenized_words):
+        skip = set(self.char_tokens['CLS'], self.char_tokens['PAD'])
+        words = []
+        for token in tokenized_words:
+            word = []
+            for id in token:
+                if id in skip:
+                    continue
+                word.append(self.char_tokens[id])
+            words.append(''.join(word))
+        return words
 
     def tokenize_words(self, words):
         wtokens = []
@@ -89,3 +139,5 @@ def corrupt(word, prob=1, per_char=0.1):
             # do nothing
             letters.append(char)
     return ''.join(letters)
+
+
