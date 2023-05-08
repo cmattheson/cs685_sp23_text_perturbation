@@ -112,31 +112,41 @@ class Bert_Plus_Elmo_Concat(nn.Module):
             bert_embedding = self.bert.embeddings.dropout(bert_embedding)
 
         # get the elmo encoding
+        #print(elmo_input_ids.shape)
         elmo_encoding = self.elmo_embedder(elmo_input_ids)
+        #print('token embedding', elmo_encoding['token_embedding'].shape)
         # elmo_encoding['token_embedding'] Shape: (batch_size, seq_len, 128)
-        elmo_embedding = self.elmo_projection(elmo_encoding['token_embedding']) # shape (batch_size, seq_len, 768)
+        elmo_embedding = self.elmo_projection(elmo_encoding['token_embedding'])  # shape (batch_size, seq_len, 768)
 
         if self.add_elmo_positional_encoding:
             # use the same positional embedding for elmo as for bert
-            elmo_embedding = elmo_embedding + position_embedding
+            #print(position_embedding.shape)
+
+            elmo_embedding = elmo_embedding[:, 1:elmo_embedding.size(1) - 1, :] + position_embedding
         if layer_norm_elmo_separately:
             elmo_embedding = self.bert.embeddings.LayerNorm(elmo_embedding)
             elmo_embedding = self.bert.embeddings.dropout(elmo_embedding)
 
         # get the attention mask for elmo (should be the same as the bert mask)
         elmo_attention_mask = elmo_encoding['mask']
+        #print('elmo mask', elmo_attention_mask.shape)
+        assert elmo_attention_mask is not None
+        assert attention_mask is not None
+        #print('bert mask', attention_mask.shape)
 
         # combine the bert and elmo embeddings by concatenating them along the sequence length dimension
         input_shape = (input_ids.size()[0], input_ids.size()[1] + elmo_embedding.shape[1])
-        combined_attention_mask = torch.cat([attention_mask, elmo_attention_mask.to(torch.int64)], dim=1)
+        elmo_attention_mask.to(torch.int64)
+        combined_attention_mask = torch.cat([attention_mask, attention_mask], dim=1)
+        #print('combined attention mask', combined_attention_mask.shape)
         extended_attention_mask: torch.Tensor = self.bert.get_extended_attention_mask(combined_attention_mask, input_shape)
-
+        #print('extended attention mask', extended_attention_mask.shape)
         combined_embedding = torch.concat([bert_embedding, elmo_embedding], dim=1)
         if not layer_norm_elmo_separately:
             combined_embedding = self.bert.embeddings.LayerNorm(combined_embedding)
             combined_embedding = self.bert.embeddings.dropout(combined_embedding)
-        #combined_embedding = bert_embedding
-        #extended_attention_mask: torch.Tensor = self.bert.get_extended_attention_mask(attention_mask,
+        #  combined_embedding = bert_embedding
+        #  extended_attention_mask: torch.Tensor = self.bert.get_extended_attention_mask(attention_mask,
                                                                                       #input_ids.shape)
         output_representations = self.bert.encoder(
             combined_embedding,
@@ -152,12 +162,15 @@ class BinaryClassifierModel(nn.Module):
         self.classifier = classifier
 
     def forward(self, *args, **kwargs):
+        """
+
+        Args:
+            *args:
+            **kwargs: input_ids, elmo_input_ids, attention_mask, labels
+
+        Returns:
+
+        """
         x = self.encoder(*args, **kwargs)
         return self.classifier(x.last_hidden_state[:, 0])
 
-def prepare_input(text, tokenizer, device):
-    encoded_input = tokenizer(text, padding=True, truncation=True, return_tensors='pt')
-    bert_input_ids = encoded_input['input_ids'].to(device)
-    bert_attention_mask = encoded_input['attention_mask'].to(device)
-    elmo_input_ids = batch_to_ids([tokenizer.tokenize(text)]).to(device)
-    return {'input_ids': bert_input_ids, 'elmo_input_ids': elmo_input_ids, 'attention_mask': bert_attention_mask}
