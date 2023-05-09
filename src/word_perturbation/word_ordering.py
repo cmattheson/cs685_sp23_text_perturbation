@@ -142,13 +142,13 @@ with open(input_address) as input_file:
     line_num += 1
         
         
-print('Perturbed samples:', num_perturbed_samples)
 
-output_file = open('Dataset\\TREC-perturbed-word-ordering.tsv', 'w')
-output_file.write(output_text)
-output_file.close()
         
 
 
 if __name__ == '__main__':
-    pass
+  print('Perturbed samples:', num_perturbed_samples)
+
+  output_file = open('Dataset\\TREC-perturbed-word-ordering.tsv', 'w')
+  output_file.write(output_text)
+  output_file.close()

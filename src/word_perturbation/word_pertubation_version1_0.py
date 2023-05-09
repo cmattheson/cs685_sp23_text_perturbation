@@ -160,10 +160,11 @@ def sentence_pertube(s,i):
     
       
       
-print(sentence_pertube("films simply remade one bad film fails capture flavor terror 1963 film title liam neeson excellent always cast holds exception owen wilson bring right feel character luke major fault version strayed far shirley jackson story attempts grandiose lost thrill earlier film trade snazzier special effects say bad film enjoy friction terror older version much",0.1))
 
 
 if __name__ == '__main__':
-  pass
+  print(sentence_pertube("films simply remade one bad film fails capture flavor terror 1963 film title liam neeson excellent always cast holds exception owen wilson bring right feel character luke major fault version strayed far shirley jackson story attempts grandiose lost thrill earlier film trade snazzier special effects say bad film enjoy friction terror older version much",0.1))
+  print(sentence_pertube(
+    "films simply remade one bad film fails capture flavor terror 1963 film title liam neeson excellent always cast holds exception owen wilson bring right feel character luke major fault version strayed far shirley jackson story attempts grandiose lost thrill earlier film trade snazzier special effects say bad film enjoy friction terror older version much",
+    0.5))
 
-print(sentence_pertube("films simply remade one bad film fails capture flavor terror 1963 film title liam neeson excellent always cast holds exception owen wilson bring right feel character luke major fault version strayed far shirley jackson story attempts grandiose lost thrill earlier film trade snazzier special effects say bad film enjoy friction terror older version much",0.5))
