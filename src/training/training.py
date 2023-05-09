@@ -41,7 +41,6 @@ def prepare_data(data: tuple[tuple[str], torch.tensor],
 def compute_statistics(model: nn.Module,
                        criterion: Callable,
                        dataloader: torch.utils.data.DataLoader,
-                       tokenizer: BertTokenizer,
                        require_elmo_embeddings: bool = True,
                        device: str = 'cuda') \
         -> tuple[float, float]:

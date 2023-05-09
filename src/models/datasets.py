@@ -44,7 +44,10 @@ class PerturbedSequenceDataset(Dataset):
         return len(self.data)
 
 class PerturbedSequenceDataset2(Dataset):
+    """"
+    """
     def __init__(self, data, log_directory,
+                 word_perturbation_rate=0.15,
                  perturbation_rate=1.0,
                  perturbation_rate_per_char=0.15,
                  tokenizer=None,
@@ -53,6 +56,7 @@ class PerturbedSequenceDataset2(Dataset):
         self.data = data
         self.perturbation_rate = perturbation_rate
         self.perturbation_rate_per_char = perturbation_rate_per_char
+        self.word_perturbation_rate = word_perturbation_rate
         self.tokenizer = tokenizer
         self.require_elmo_ids = require_elmo_ids
         self.max_word_length = 50
