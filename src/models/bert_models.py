@@ -3,7 +3,6 @@ import torch.nn as nn
 from allennlp.modules.elmo import _ElmoCharacterEncoder
 from transformers import BertModel
 
-print(torch.utils.data.get_worker_info())
 class ElmoBertModel(nn.Module):
     def __init__(self):
         super().__init__()
