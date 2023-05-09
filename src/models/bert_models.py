@@ -160,7 +160,7 @@ class Bert_Plus_Elmo_Concat(ElmoBertModel):
 
         return output_representations
 
-class BinaryClassifierModel(nn.Module):
+class ClassifierModel(nn.Module):
     def __init__(self, encoder, classifier):
         super().__init__()
         self.encoder = encoder
