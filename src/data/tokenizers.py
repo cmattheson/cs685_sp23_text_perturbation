@@ -1,9 +1,6 @@
-import torch
 import random
 
-from transformers import BertTokenizer
-from allennlp.modules.elmo import batch_to_ids
-
+import torch
 
 test_seqs = ['this is a test', 'this is another test']
 class LMSpellcheckderTokenizer:
