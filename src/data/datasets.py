@@ -54,7 +54,7 @@ class PerturbedSequenceDataset2(Dataset):
                  data,
                  labels,
                  log_directory='../../logs/character_perturbation',
-                 word_perturbation_rate=0.0,
+                 word_perturbation_rate=0.15,
                  perturb_characters=True,
                  tokenizer=BertTokenizer.from_pretrained('bert-base-uncased'),
                  require_elmo_ids=True):
@@ -70,10 +70,11 @@ class PerturbedSequenceDataset2(Dataset):
     def __getitem__(self, idx):
         label = self.labels[idx]
         text = self.data[idx]
-        if self.perturb_characters:
-            text = self.handler.perturb_string(text)
+
         if self.word_perturbation_rate > 0:
             text = sentence_pertube(text, self.word_perturbation_rate)
+        if self.perturb_characters:
+            text = self.handler.perturb_string(text)
         if self.tokenizer:
             encoded_input = self.tokenizer(text, return_tensors='pt')
             input_ids = encoded_input['input_ids'].squeeze(0)
