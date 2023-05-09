@@ -84,8 +84,9 @@ def sentence_pertube(s, i, verbose=False):
                         if (sample_pos_tag[i][0] not in can_be_replaced_list):
                             can_be_replaced_list.append(sample_pos_tag[i][0])
 
-    if (verbose and (candidate_synonym) > 0):
-        print('Words that can be replaced:', can_be_replaced_list)
+    if len(candidate_synonym) > 0:
+        if (verbose):
+            print('Words that can be replaced:', can_be_replaced_list)
 
         unique_words = len(can_be_replaced_list)
         num_perturbed_words = 0
