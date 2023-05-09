@@ -8,25 +8,11 @@ Original file is located at
 """
 
 import nltk
-from nltk.corpus import stopwords
-from nltk.stem.porter import PorterStemmer
-from nltk.stem.snowball import SnowballStemmer
-from nltk.stem.wordnet import WordNetLemmatizer
 
 nltk.download('wordnet')
 
-from builtins import str
-
-import csv
-import sys, getopt
-
-import xml.etree.ElementTree as ET
-from xml.dom.minidom import parse, Node
-import xml.dom.minidom
-
-nltk.download('punkt')
-nltk.download('averaged_perceptron_tagger')
-from numpy import double
+nltk.download('punkt', quiet=True)
+nltk.download('averaged_perceptron_tagger', quiet=True)
 
 from random import seed
 from random import randint
