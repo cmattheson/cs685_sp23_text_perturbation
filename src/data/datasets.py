@@ -1,8 +1,12 @@
 import torch
+from allennlp.modules.elmo import batch_to_ids
 from torch.utils.data import Dataset
+from transformers import BertTokenizer
+
 from tokenizers import *
 from src.character_perturbation.text_perturbation import *
 from torch.nn.functional import pad
+from src.word_perturbation.word_pertubation_version1_0 import sentence_pertube
 class CustomDataset(Dataset):
     def __init__(self, vocab, prob=1.0, per_char=0.3):
         self.vocab = vocab
@@ -46,25 +50,30 @@ class PerturbedSequenceDataset(Dataset):
 class PerturbedSequenceDataset2(Dataset):
     """"
     """
-    def __init__(self, data, log_directory,
-                 word_perturbation_rate=0.15,
-                 perturbation_rate=1.0,
-                 perturbation_rate_per_char=0.15,
-                 tokenizer=None,
+    def __init__(self,
+                 data,
+                 labels,
+                 log_directory='../../logs/character_perturbation',
+                 word_perturbation_rate=0.0,
+                 perturb_characters=True,
+                 tokenizer=BertTokenizer.from_pretrained('bert-base-uncased'),
                  require_elmo_ids=True):
         self.handler = TextPerturbationHandler(log_directory=log_directory)
         self.data = data
-        self.perturbation_rate = perturbation_rate
-        self.perturbation_rate_per_char = perturbation_rate_per_char
+        self.labels = labels
+        self.perturb_characters = perturb_characters
         self.word_perturbation_rate = word_perturbation_rate
         self.tokenizer = tokenizer
         self.require_elmo_ids = require_elmo_ids
         self.max_word_length = 50
         self.max_sentence_length = 50 # restrict to 50 for now so we don't run out of vram :(
     def __getitem__(self, idx):
-        itm = self.data[idx]
-        label = torch.tensor(itm[1])
-        text = self.handler.perturb_string(itm[0])
+        label = self.labels[idx]
+        text = self.data[idx]
+        if self.perturb_characters:
+            text = self.handler.perturb_string(text)
+        if self.word_perturbation_rate > 0:
+            text = sentence_pertube(text, self.word_perturbation_rate)
         if self.tokenizer:
             encoded_input = self.tokenizer(text, return_tensors='pt')
             input_ids = encoded_input['input_ids'].squeeze(0)
