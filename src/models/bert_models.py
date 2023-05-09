@@ -29,8 +29,6 @@ class Bert_Plus_Elmo(ElmoBertModel):
         extended_attention_mask: torch.Tensor = self.bert.get_extended_attention_mask(attention_mask, input_shape)
         bert_embedding: torch.Tensor = self.bert.embeddings.word_embeddings(input_ids)
         elmo_embedding: torch.Tensor = self.elmo_projection(self.elmo_embedder(elmo_input_ids)['token_embedding'])
-        #elmo_embedding[:, 1:, :] = 0 # zero out the embeddings for the BOS token
-        #elmo_embedding[:, -1, :] = 0 # zero out the embeddings for the EOS token
         embeddings: torch.Tensor = bert_embedding + elmo_embedding[:, 1:elmo_embedding.size(1)-1, :] + position_embedding
         embeddings: torch.Tensor = self.bert.embeddings.LayerNorm(embeddings)
         embeddings: torch.Tensor = self.bert.embeddings.dropout(embeddings)
@@ -206,7 +204,12 @@ class BinaryClassifierModel(nn.Module):
             """
             Freeze the bert encoder and only train the elmo encoder
             """
+            assert isinstance(self.encoder, ElmoBertModel)
             for param in self.encoder.bert.parameters():
+                param.requires_grad = False
+        elif phase == 'freeeze_elmo':
+            assert isinstance(self.encoder, ElmoBertModel)
+            for param in self.encoder.elmo_embedder.parameters():
                 param.requires_grad = False
 
 if __name__=='__main__':
