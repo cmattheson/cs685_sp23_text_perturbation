@@ -197,9 +197,7 @@ class ClassifierModel(nn.Module):
             """
             Unfreeze the encoder and train both the encoder and the classifier
             """
-            for param in self.encoder.parameters():
-                param.requires_grad = True
-            for param in self.classifier.parameters():
+            for param in self.parameters():
                 param.requires_grad = True
         elif phase == 'elmo':
             """
