@@ -214,6 +214,7 @@ def train(model: nn.Module,
             time_eval_start = time.time()
 
             if 'val_loader' in kwargs:
+                print('Evaluating on validation set')
                 val_loss, val_accuracy = compute_statistics(model,
                                                             criterion,
                                                             kwargs['val_loader'],
@@ -221,6 +222,7 @@ def train(model: nn.Module,
                 statistics['validation_loss'].append(val_loss)
                 statistics['validation_accuracy'].append(val_accuracy)
             if 'test_loader' in kwargs:
+                print('Evaluating on test set')
                 test_loss, test_accuracy = compute_statistics(model,
                                                               criterion,
                                                               kwargs['test_loader'],
