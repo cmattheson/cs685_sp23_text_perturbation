@@ -10,11 +10,12 @@ class Bert_Plus_Elmo(ElmoBertModel):
     """
     This model sums the BERT and ELMo embeddings
     """
-    def __init__(self):
+    def __init__(self, options_file='src/models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_options.json',
+                                                   weight_file='src/models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_weights.hdf5'):
         super().__init__()
         self.bert = BertModel.from_pretrained('bert-base-uncased')
-        self.elmo_embedder = _ElmoCharacterEncoder(options_file='../models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_options.json',
-                                                   weight_file='../models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_weights.hdf5')
+        self.elmo_embedder = _ElmoCharacterEncoder(options_file=options_file,
+                                                   weight_file=weight_file)
         # Project the 128-dimensional ELMo vectors to 768 dimensions to match BERT's embedding dimension
         self.elmo_projection = nn.Linear(128, 768)
 
@@ -45,7 +46,8 @@ class Bert_Plus_Elmo_Skip(ElmoBertModel):
     """
     This model sums the BERT and ELMo embeddings (not fully implemented)
     """
-    def __init__(self, elmo_strength_out=1.0, learn_elmo_strength=False):
+    def __init__(self, elmo_strength_out=1.0, learn_elmo_strength=False, options_file='src/models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_options.json',
+                                                   weight_file='src/models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_weights.hdf5'):
         super().__init__()
         self.elmo_strength_out = elmo_strength_out
         self.bert = BertModel.from_pretrained('bert-base-uncased')
@@ -53,10 +55,8 @@ class Bert_Plus_Elmo_Skip(ElmoBertModel):
             self.elmo_strength_out = nn.Parameter(torch.tensor(elmo_strength_out))
         else:
             self.elmo_strength_out = elmo_strength_out
-        self.elmo_embedder = _ElmoCharacterEncoder(
-            options_file='../models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_options.json',
-            weight_file='../models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_weights.hdf5'
-        )
+        self.elmo_embedder = _ElmoCharacterEncoder(options_file=options_file,
+                                                   weight_file=weight_file)
         # Project the 128-dimensional ELMo vectors to 768 dimensions to match BERT's embedding dimension
         self.elmo_projection = nn.Linear(128, 768)
 
@@ -84,12 +84,13 @@ class Bert_Plus_Elmo_Concat(ElmoBertModel):
     it concatenates the BERT and ELMo embeddings along the sequence dimension. This should allow the model to attend to
     both the BERT and ELMo embeddings at the same time.
     """
-    def __init__(self,  elmo_embedder_dim=128, elmo_strength=1.0, add_elmo_positional_encoding=True):
+    def __init__(self,  elmo_embedder_dim=128, elmo_strength=1.0, add_elmo_positional_encoding=True, options_file='src/models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_options.json',
+                                                   weight_file='src/models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_weights.hdf5'):
         super().__init__()
         self.bert = BertModel.from_pretrained('bert-base-uncased')
         self.linear = nn.Linear(768, 256)
-        self.elmo_embedder = _ElmoCharacterEncoder(options_file='../models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_options.json',
-                                                   weight_file='../models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_weights.hdf5')
+        self.elmo_embedder = _ElmoCharacterEncoder(options_file=options_file,
+                                                   weight_file=weight_file)
         # Project the 128-dimensional ELMo vectors to 768 dimensions to match BERT's embedding dimension
         self.elmo_projection = nn.Linear(elmo_embedder_dim, 768)
         self.elmo_strength = elmo_strength
