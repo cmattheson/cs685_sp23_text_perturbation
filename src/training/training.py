@@ -98,7 +98,7 @@ def compute_statistics(model: nn.Module,
         """
         model.eval()
 
-        if isinstance(model, ElmoBertModel):
+        if isinstance(model.encoder, ElmoBertModel):
             input_ids, elmo_input_ids, attention_mask, labels = data[0].to(device), \
                 data[1].to(device), data[2].to(device), data[3].to(device)
             with torch.no_grad():
