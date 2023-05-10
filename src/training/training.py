@@ -1,18 +1,19 @@
 from typing import Callable
 
-import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
 from tqdm import tqdm
 from transformers import BertTokenizer
+from datasets import load_dataset
 
 from src.models.bert_models import ElmoBertModel
 
+
 def train_val_test_split(dataset: torch.utils.data.Dataset,
                          pct_train=0.8,
-                         pct_val=0.1) \
-        -> tuple[torch.utils.data.Dataset, torch.utils.data.Dataset, torch.utils.data.Dataset]:
+                         pct_val=0.2) \
+        -> tuple[torch.utils.data.Dataset, torch.utils.data.Dataset, torch.utils.data.Dataset] or tuple[torch.utils.data.Dataset, torch.utils.data.Dataset]:
     """
 
     Args:
@@ -28,8 +29,14 @@ def train_val_test_split(dataset: torch.utils.data.Dataset,
     train_dataset: Dataset
     val_dataset: Dataset
     test_dataset: Dataset
-    train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_size, test_size])
-    return train_dataset, val_dataset, test_dataset
+    if pct_train + pct_val == 1:
+        train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size])
+        return train_dataset, val_dataset
+    else:
+        train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_size, test_size])
+        return train_dataset, val_dataset, test_dataset
+
+
 def prepare_data(data: tuple[tuple[str], torch.tensor],
                  tokenizer: BertTokenizer,
                  require_elmo_embeddings: bool = True,
@@ -63,7 +70,6 @@ def prepare_data(data: tuple[tuple[str], torch.tensor],
 def compute_statistics(model: nn.Module,
                        criterion: Callable,
                        dataloader: torch.utils.data.DataLoader,
-                       require_elmo_embeddings: bool = True,
                        device: str = 'cuda') \
         -> tuple[float, float]:
     """
@@ -82,6 +88,7 @@ def compute_statistics(model: nn.Module,
     pbar = tqdm(dataloader)
     loss = 0
     num_correct = 0
+    num_examples = 0
     for i, data in enumerate(pbar):
         """
         model_kwargs, labels = prepare_data(data,
@@ -91,7 +98,7 @@ def compute_statistics(model: nn.Module,
         """
         model.eval()
 
-        if require_elmo_embeddings:
+        if isinstance(model, ElmoBertModel):
             input_ids, elmo_input_ids, attention_mask, labels = data[0].to(device), \
                 data[1].to(device), data[2].to(device), data[3].to(device)
             with torch.no_grad():
@@ -102,15 +109,19 @@ def compute_statistics(model: nn.Module,
             with torch.no_grad():
                 out = model(input_ids, attention_mask)
 
-        it_loss = criterion(out.squeeze(), labels.to(torch.float32), reduction='sum').item()
-        it_num_correct = torch.sum(torch.round(torch.sigmoid(out.squeeze())) == labels).item()
+        it_loss = criterion(out.squeeze(), labels, reduction='sum').item()
+        # check if we are doing binary classification or multiclass
+        if out.shape[1] == 1:
+            it_num_correct = torch.sum(torch.round(torch.sigmoid(out.squeeze())) == labels).item()
+        else:
+            it_num_correct = torch.sum(torch.argmax(out, dim=1) == labels).item()
         num_correct += it_num_correct
         loss += it_loss
         pbar.set_description(
             f'it: {i + 1} / {len(dataloader)} loss: {it_loss / len(data[0])}')
 
     accuracy = num_correct / len(dataloader.dataset)
-    return loss / len(dataloader.dataset), accuracy / len(dataloader.dataset)
+    return loss / len(dataloader.dataset), accuracy
 
 
 def train(model: nn.Module,
@@ -122,7 +133,7 @@ def train(model: nn.Module,
           device: str = 'cuda',
           record_training_statistics: bool = False,
           record_time_statistics: bool = False,
-          save_model_parameters: bool = False,
+          model_save_path: str = None,
           phases: dict[str, int] = None,
           **kwargs
           ) -> dict[str, list[float]] or None:
@@ -181,21 +192,27 @@ def train(model: nn.Module,
                     input_ids, attention_mask, labels = data[0].to(device), data[1].to(device), data[2].to(device)
                     time_start_forward = time.time()
                     out = model(input_ids, attention_mask)
-                loss = criterion(out.squeeze(), labels.to(torch.float32))
+                loss = criterion(out.squeeze(), labels)
                 loss.backward()
                 time_finish_backward = time.time()
                 time_train += time_finish_backward - time_start_forward
 
                 if record_training_statistics:
                     statistics['training_loss'].append(loss.item())
-                    statistics['training_accuracy'].append(
-                        torch.sum(torch.round(torch.sigmoid(out.squeeze())) == labels).item() / len(labels))
+                    # check if we are doing binary or multiclass classification
+                    if out.shape[1] == 1:
+                        statistics['training_accuracy'].append(
+                            torch.sum(torch.round(torch.sigmoid(out.squeeze())) == labels).item() / len(labels))
+                    else:
+                        statistics['training_accuracy'].append(
+                            torch.sum(torch.argmax(out.squeeze(), dim=1) == labels).item() / len(labels))
 
                 pbar.set_description(
                     f'it: {len(pbar) * epoch + i + 1} / {len(pbar) * num_epochs} epoch: {epoch + 1} / {num_epochs} loss: {loss.item()}')
                 optim.step()
 
             time_eval_start = time.time()
+
             if 'val_loader' in kwargs:
                 val_loss, val_accuracy = compute_statistics(model,
                                                             criterion,
@@ -217,12 +234,12 @@ def train(model: nn.Module,
     time_finish = time.time()
     total_time = time_finish - time_start
 
-    if save_model_parameters:
+    if model_save_path:
         """
         save the model parameters if required
 
         """
-        torch.save(model.state_dict(), 'model_parameters.pt')
+        torch.save(model.state_dict(), model_save_path)
 
     if record_time_statistics:
         statistics['total_time'] = total_time
@@ -235,22 +252,30 @@ def train(model: nn.Module,
 
 
 if __name__ == '__main__':
+    dataset = load_dataset('../data/ag_news.py')
+
+    num_classes = len(set(dataset['train']['label']))
+
     from transformers import BertTokenizer
-    from src.models.bert_models import Bert_Plus_Elmo_Concat, Bert_Plus_Elmo, BinaryClassifierModel
+    from src.models.bert_models import Bert_Plus_Elmo_Concat, Bert_Plus_Elmo, ClassifierModel
 
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
-    encoder = Bert_Plus_Elmo_Concat()
-    encoder = Bert_Plus_Elmo()
+    encoder = Bert_Plus_Elmo_Concat(options_file='../models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_options.json',
+                                    weight_file='../models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_weights.hdf5')
+   # encoder = Bert_Plus_Elmo(options_file='../models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_options.json',
+   #                          weight_file='../models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_weights.hdf5')
 
-    optim = torch.optim.Adam(encoder.parameters(), lr=0.00003)
-    criterion = torch.nn.functional.binary_cross_entropy_with_logits
+    # optim = torch.optim.Adam(encoder.parameters(), lr=0.0003)
 
-    examples = [('I loved the movie Guardians of the Galaxy 3', 1),
-            ('I hated the movie Guardians of the Galaxy 3', 0)] * 1000
+    # criterion = torch.nn.functional.binary_cross_entropy_with_logits
+    criterion = torch.nn.functional.cross_entropy
 
-    data = [itm[0] for itm in examples]
-    labels = torch.tensor([itm[1] for itm in examples])
+    # examples = [('I loved the movie Guardians of the Galaxy 3', 1),
+    #            ('I hated the movie Guardians of the Galaxy 3', 0)] * 1000
+
+    # data = [itm[0] for itm in examples]
+    # labels = torch.tensor([itm[1] for itm in examples])
 
     # dataset = PerturbedSequenceDataset2(data, tokenizer=tokenizer, log_directory='../../logs/character_perturbation')
     from torch.utils.data import DataLoader
@@ -258,15 +283,27 @@ if __name__ == '__main__':
     # dataloader = DataLoader(dataset, batch_size=64, num_workers=1, shuffle=True)
     from src.data.datasets import *
 
-    dataset = PerturbedSequenceDataset2(data, labels)
-    dataloader = DataLoader(dataset, batch_size=64, num_workers=1, shuffle=True, persistent_workers=True)
+    dataset = PerturbedSequenceDataset(dataset['train']['text'][:1000], torch.tensor(dataset['train']['label'][:1000]), log_directory='../../logs/character_perturbation')
+    train_set, val_set = train_val_test_split(dataset)
+    train_loader = DataLoader(train_set, batch_size=64, num_workers=2, shuffle=True, persistent_workers=True)
+    val_loader = DataLoader(val_set, batch_size=64, num_workers=2, shuffle=True, persistent_workers=True)
+    print(type(train))
     # create a binary classifier head
-    classifier_head = nn.Linear(768, 1)
-    model = BinaryClassifierModel(encoder=encoder, classifier=classifier_head)
-    phases = {'warmup': 5, 'elmo': 1, 'finetune': 5}
-    statistics = train(model, dataloader, criterion, optim, device='cuda',
+    classifier_head = nn.Linear(768, num_classes)
+    model = ClassifierModel(encoder=encoder, classifier=classifier_head)
+    phases = {'finetune': 1}
+    optim = torch.optim.Adam(model.parameters(), lr=0.00003)
+
+    statistics = train(model, train_loader, criterion, optim, device='cuda',
+                       val_loader=val_loader,
                        phases=phases,
                        record_training_statistics=True,
+                       model_save_path='../models/pretrained/bert_elmo_ag_news_classifier.pt',
                        record_time_statistics=True)
 
     print(statistics)
+
+    test_name = 'ag_news_'
+    for stat in statistics:
+        with open(test_name + f'{stat}.txt', 'w') as f:
+            f.write(str(statistics[stat]))

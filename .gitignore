@@ -2,3 +2,4 @@ venv/*
 .idea/*
 /src/models/pretrained/*
 /data/datasets/*
+*/.ipynb_checkpoints/
