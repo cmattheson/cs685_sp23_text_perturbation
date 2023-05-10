@@ -9,7 +9,7 @@ Original file is located at
 
 import nltk
 
-nltk.download('wordnet')
+nltk.download('wordnet', quiet=True)
 
 nltk.download('punkt', quiet=True)
 nltk.download('averaged_perceptron_tagger', quiet=True)
