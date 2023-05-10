@@ -30,7 +30,7 @@ def run_baseline(phases):
                        record_time_statistics=True)
     save_statistics(f'logs/experiments/{test_name}', statistics)
     # ------------------------------------------------------------------------------------------------------------
-    test_name = 'ag_news_bert_bert_perturbed'
+    test_name = 'ag_news_bert_perturbed'
     model = ClassifierModel(BertModel.from_pretrained('bert-base-uncased'), nn.Linear(768, num_classes))
 
     train_set = PerturbedSequenceDataset(all_data['train']['text'],
