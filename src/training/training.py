@@ -270,46 +270,32 @@ def train(model: nn.Module,
 
 if __name__ == '__main__':
     """
-    This script runs some tests to make sure everything is working as expected. 
-    It's outdated and probably won't work anymore.
+    This script runs some tests to make sure everything is working as expected. It also serves as an example of how to
+    use the code in this repository.
     """
+    from src.util import *
+    from transformers import BertTokenizer
+    from src.models.bert_models import Bert_Plus_Elmo_Concat, Bert_Plus_Elmo, ClassifierModel
+    from torch.utils.data import DataLoader
+    from src.data.datasets import *
+
     dataset = load_dataset('../data/ag_news.py')
 
     num_classes = len(set(dataset['train']['label']))
 
-    from transformers import BertTokenizer
-    from src.models.bert_models import Bert_Plus_Elmo_Concat, Bert_Plus_Elmo, ClassifierModel
 
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
     encoder = Bert_Plus_Elmo_Concat(options_file='../models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_options.json',
                                     weight_file='../models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_weights.hdf5')
-   # encoder = Bert_Plus_Elmo(options_file='../models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_options.json',
-   #                          weight_file='../models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_weights.hdf5')
 
-    # optim = torch.optim.Adam(encoder.parameters(), lr=0.0003)
-
-    # criterion = torch.nn.functional.binary_cross_entropy_with_logits
     criterion = torch.nn.functional.cross_entropy
 
-    # examples = [('I loved the movie Guardians of the Galaxy 3', 1),
-    #            ('I hated the movie Guardians of the Galaxy 3', 0)] * 1000
-
-    # data = [itm[0] for itm in examples]
-    # labels = torch.tensor([itm[1] for itm in examples])
-
-    # dataset = PerturbedSequenceDataset2(data, tokenizer=tokenizer, log_directory='../../logs/character_perturbation')
-    from torch.utils.data import DataLoader
-
-    # dataloader = DataLoader(dataset, batch_size=64, num_workers=1, shuffle=True)
-    from src.data.datasets import *
-
-    dataset = PerturbedSequenceDataset(dataset['train']['text'][:1000], torch.tensor(dataset['train']['label'][:1000]), log_directory='../../logs/character_perturbation')
+    dataset = PerturbedSequenceDataset(dataset['train']['text'][:100], torch.tensor(dataset['train']['label'][:100]), log_directory='../../logs/character_perturbation')
     train_set, val_set = train_val_test_split(dataset)
-    train_loader = DataLoader(train_set, batch_size=64, num_workers=2, shuffle=True, persistent_workers=True)
-    val_loader = DataLoader(val_set, batch_size=64, num_workers=2, shuffle=True, persistent_workers=True)
-    print(type(train))
-    # create a binary classifier head
+    train_loader = DataLoader(train_set, batch_size=32, num_workers=2, shuffle=True, persistent_workers=True)
+    val_loader = DataLoader(val_set, batch_size=32, num_workers=2, shuffle=True, persistent_workers=True)
+    # create a classifier head
     classifier_head = nn.Linear(768, num_classes)
     model = ClassifierModel(encoder=encoder, classifier=classifier_head)
     phases = {'finetune': 1}
@@ -322,9 +308,5 @@ if __name__ == '__main__':
                        model_save_path='../models/pretrained/bert_elmo_ag_news_classifier.pt',
                        record_time_statistics=True)
 
-    print(statistics)
 
-    test_name = 'ag_news_'
-    for stat in statistics:
-        with open(test_name + f'{stat}.txt', 'w') as f:
-            f.write(str(statistics[stat]))
+    save_statistics('../../logs/experiments/example_experiment', statistics)
