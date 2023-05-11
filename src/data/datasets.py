@@ -6,7 +6,7 @@ from transformers import BertTokenizer
 from tokenizers import *
 from src.character_perturbation.text_perturbation import *
 from torch.nn.functional import pad
-from src.word_perturbation.word_pertubation_version1_0 import sentence_pertube
+from src.word_perturbation.word_pertubation_version_synonym import sentence_pertube
 
 
 class CustomDataset(Dataset):
