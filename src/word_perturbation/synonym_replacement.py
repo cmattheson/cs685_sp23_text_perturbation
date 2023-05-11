@@ -25,8 +25,17 @@ from nltk.corpus import wordnet
 
 
 class SynonymReplacementHandler:
+    """
+    This class is used to perturb a sentence by replacing words with synonyms.
+    """
 
-    def __init__(self, perturbation_chance: float = 0.15, verbose=False):
+    def __init__(self, perturbation_chance: float = 0.15, verbose: bool = False):
+        """
+
+        Args:
+            perturbation_chance: chance to perturb a word
+            verbose: whether to print logging information
+        """
         self.synonyms: dict[str, set[str]] = {}
         self.gathered_synonyms: set = set()
         self.perturbation_chance = perturbation_chance
@@ -90,6 +99,9 @@ class SynonymReplacementHandler:
 
 
 if __name__ == '__main__':
+    """
+    This is a test script to test the functionality of the class.
+    """
     handler = SynonymReplacementHandler(perturbation_chance=1)
     s = "friend lent dvd got director festival think went warned technical aspects movie bit shaky writing good great " \
         "maybe colored judgment admit liked moviethe standouts actors youssef kerkor really good ernie main character " \

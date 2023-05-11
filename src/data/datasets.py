@@ -6,7 +6,7 @@ from transformers import BertTokenizer
 from tokenizers import *
 from src.character_perturbation.text_perturbation import *
 from torch.nn.functional import pad
-from src.word_perturbation.word_pertubation_version_synonym import sentence_pertube
+from src.word_perturbation.synonym_replacement import SynonymReplacementHandler
 
 
 class CustomDataset(Dataset):
@@ -41,69 +41,26 @@ class PerturbedSequenceDataset(Dataset):
                  data,
                  labels,
                  log_directory='./logs/character_perturbation',
-                 word_perturbation_rate=0.0,
-                 perturb_characters=True,
-                 tokenizer=BertTokenizer.from_pretrained('bert-base-uncased'),
-                 require_elmo_ids=True):
-        self.handler = TextPerturbationHandler(log_directory=log_directory)
-        self.data = data
-        self.labels = labels
-        self.perturb_characters = perturb_characters
-        self.word_perturbation_rate = word_perturbation_rate
-        self.tokenizer = tokenizer
-        self.require_elmo_ids = require_elmo_ids
-        self.max_word_length = 50
-        self.max_sentence_length = 50  # restrict to 50 for now so we don't run out of vram :(
-
-    def __getitem__(self, idx):
-        label = self.labels[idx]
-        text = self.data[idx]
-
-        if self.word_perturbation_rate > 0:
-            text = sentence_pertube(text, self.word_perturbation_rate)
-        if self.perturb_characters:
-            text = self.handler.perturb_string(text)
-        if self.tokenizer:
-            encoded_input = self.tokenizer(text, return_tensors='pt')
-            input_ids = encoded_input['input_ids'].squeeze(0)
-            input_ids = pad(input_ids, (0, self.max_sentence_length - input_ids.shape[0]), value=0)
-            attention_mask = encoded_input['attention_mask'].squeeze(0)
-            attention_mask = pad(attention_mask, (0, self.max_sentence_length - attention_mask.shape[0]), value=0)
-            if self.require_elmo_ids:
-                elmo_input_ids = batch_to_ids([self.tokenizer.tokenize(text)]).squeeze(0)
-                elmo_input_ids = pad(elmo_input_ids, (0, self.max_word_length - elmo_input_ids.shape[1], 0,
-                                                      self.max_sentence_length - elmo_input_ids.shape[0]), value=0)
-
-                return input_ids, elmo_input_ids, attention_mask, label
-            else:
-                return input_ids, attention_mask, label
-
-    def __len__(self):
-        return len(self.data)
-
-
-class PerturbedSequenceDataset(Dataset):
-    """"
-    """
-
-    def __init__(self,
-                 data,
-                 labels,
-                 log_directory='./logs/character_perturbation',
-                 word_perturbation_rate=0.0,
+                 train_word_perturbation_rate=0.0,
+                 val_word_perturbation_rate=0.3,
                  train_char_perturbation_rate=0.0,
                  val_char_perturbation_rate=5.0,
                  tokenizer=BertTokenizer.from_pretrained('bert-base-uncased'),
                  require_elmo_ids=True):
-        self.handler_train = TextPerturbationHandler(log_directory=log_directory,
-                                                     perturbation_weight=train_char_perturbation_rate)
-        self.handler_val = TextPerturbationHandler(log_directory=log_directory,
-                                                   perturbation_weight=val_char_perturbation_rate)
+        self.train_char_perturbation_handler = TextPerturbationHandler(log_directory=log_directory,
+                                                                       perturbation_weight=train_char_perturbation_rate)
+        self.val_char_perturbation_handler = TextPerturbationHandler(log_directory=log_directory,
+                                                                     perturbation_weight=val_char_perturbation_rate)
+        self.train_synonym_replacement_handler = SynonymReplacementHandler(
+            perturbation_chance=train_word_perturbation_rate)
+        self.val_synonym_replacement_handler = SynonymReplacementHandler(perturbation_chance=val_word_perturbation_rate)
         self.data = data
         self.labels = labels
-        self.char_perturbation_rate = train_char_perturbation_rate
+        self.train_char_perturbation_rate = train_char_perturbation_rate
         self.val_char_perturbation_rate = val_char_perturbation_rate
-        self.word_perturbation_rate = word_perturbation_rate
+        self.train_word_perturbation_rate = train_word_perturbation_rate
+        self.val_word_perturbation_rate = val_word_perturbation_rate
+        self.train_word_perturbation_rate = train_word_perturbation_rate
         self.tokenizer = tokenizer
         self.require_elmo_ids = require_elmo_ids
         self.max_word_length = 50
@@ -113,15 +70,19 @@ class PerturbedSequenceDataset(Dataset):
     def __getitem__(self, idx):
         label = self.labels[idx]
         text = self.data[idx]
-        if self.word_perturbation_rate > 0:
-            text = sentence_pertube(text, self.word_perturbation_rate)
+
         if not self.eval_mode:
-            if self.char_perturbation_rate > 0:
-                text = self.handler_train.perturb_string(text)
+            if self.train_word_perturbation_rate > 0:
+                text = self.train_synonym_replacement_handler.sentence_perturbe(text)
+            if self.train_char_perturbation_rate > 0:
+                text = self.train_char_perturbation_handler.perturb_string(text)
         else:
+            if self.val_word_perturbation_rate > 0:
+                text = self.val_synonym_replacement_handler.sentence_perturbe(text)
             if self.val_char_perturbation_rate > 0:
-                text = self.handler_val.perturb_string(text)
+                text = self.val_char_perturbation_handler.perturb_string(text)
         if self.tokenizer:
+            assert isinstance(text, str), f'Expected string, got {type(text)}'
             encoded_input = self.tokenizer(text, return_tensors='pt')
             input_ids = encoded_input['input_ids'].squeeze(0)
             input_ids = pad(input_ids, (0, self.max_sentence_length - input_ids.shape[0]), value=0)
