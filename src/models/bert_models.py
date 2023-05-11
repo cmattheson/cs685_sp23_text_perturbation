@@ -134,19 +134,14 @@ class Bert_Plus_Elmo_Concat(ElmoBertModel):
             elmo_embedding = self.bert.embeddings.dropout(elmo_embedding)
 
         # get the attention mask for elmo (should be the same as the bert mask)
-        elmo_attention_mask = elmo_encoding['mask']
-        #print('elmo mask', elmo_attention_mask.shape)
-        assert elmo_attention_mask is not None
+
         assert attention_mask is not None
         #print('bert mask', attention_mask.shape)
 
         # combine the bert and elmo embeddings by concatenating them along the sequence length dimension
         input_shape = (input_ids.size()[0], input_ids.size()[1] + elmo_embedding.shape[1])
-        elmo_attention_mask.to(torch.int64)
         combined_attention_mask = torch.cat([attention_mask, attention_mask], dim=1)
-        #print('combined attention mask', combined_attention_mask.shape)
         extended_attention_mask: torch.Tensor = self.bert.get_extended_attention_mask(combined_attention_mask, input_shape)
-        #print('extended attention mask', extended_attention_mask.shape)
         combined_embedding = torch.concat([bert_embedding, elmo_embedding], dim=1)
         if not layer_norm_elmo_separately:
             combined_embedding = self.bert.embeddings.LayerNorm(combined_embedding)
