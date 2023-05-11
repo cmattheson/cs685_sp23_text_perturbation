@@ -7,164 +7,131 @@ Original file is located at
     https://colab.research.google.com/drive/1mrGu6z5Sl7-Vglpb5fiZJpBedpKxJwAI
 """
 
-
-
 import nltk
-from nltk.corpus import stopwords
-from nltk.stem.porter import PorterStemmer
-from nltk.stem.snowball import SnowballStemmer
-from nltk.stem.wordnet import WordNetLemmatizer
-nltk.download('wordnet')
 
-from builtins import str
+nltk.download('wordnet', quiet=True)
+nltk.download('punkt', quiet=True)
+nltk.download('averaged_perceptron_tagger', quiet=True)
 
-import csv
-import sys, getopt
-
-import xml.etree.ElementTree as ET
-from xml.dom.minidom import parse, Node
-import xml.dom.minidom 
-nltk.download('punkt')
-nltk.download('averaged_perceptron_tagger')      
-from numpy import double
-
-from random import seed
-from random import randint
-
+from random import randint, seed
 from nltk.corpus import wordnet
-import random
+
 
 seed(1)
 
-#--------------------------------------------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------------------------------------------
 
 def return_random_number(begin, end):
-  return randint(begin, end)
+    return randint(begin, end)
 
 
 class Synonym:
-    
-   def __init__(self, first_word, second_word):
-    self.first_word = first_word
-    self.second_word = second_word
+
+    def __init__(self, first_word, second_word):
+        self.first_word = first_word
+        self.second_word = second_word
 
 
-
-
-
-#This is the main function wich needs to be called. Will take string as input and gives pertub string as output.
+# This is the main function wich needs to be called. Will take string as input and gives pertub string as output.
 # s = string and i is dividing the string length for maximum words so lesser the value of i lesser will be pertubation will occur. Note i value should be between (0-1)
-def sentence_pertube(s,i):
-  max_replace = int(len(s.split())*i)
-  
-  
+def sentence_pertube(s, i, verbose=False):
+    max_replace = int(len(s.split()) * i)
+
+    num_perturbed_samples = 0
+
+    if (verbose):
+        print(s)
 
 
-  num_perturbed_samples = 0
-      
+    sample_text = s
+    # sample_label = row[1]
+    sample_tokenized = nltk.word_tokenize(sample_text)
+    sample_pos_tag = nltk.pos_tag(sample_tokenized)
 
-  
-  print(s)
+    word_replaced = False
+    perturbed_sample = sample_text
 
-  is_sample_perturbed = False
-  
-  sample_text = s
-  # sample_label = row[1]
-  sample_tokenized = nltk.word_tokenize(sample_text)
-  sample_pos_tag = nltk.pos_tag(sample_tokenized)
+    candidate_synonym = []
+    can_be_replaced_list = []
 
-  word_replaced = False
-  perturbed_sample = sample_text
-  
-  candidate_synonym = []
-  can_be_replaced_list = []
-  
-    
-  for i in range(0, len(sample_pos_tag)):
-    if (sample_pos_tag[i][1] in ('CD', 'JJ', 'JJR', 'JJS', 'NN', 'NNS', 'RB', 'RBR', 'RBS')): #----- Replace the word if it is a noun, adjective, or adverb
-      for syn in wordnet.synsets(sample_pos_tag[i][0]):
-        for l in syn.lemmas():
-          if (sample_pos_tag[i][0] != l.name()):
-            temp_synonym = Synonym(sample_pos_tag[i][0], l.name())
-            candidate_synonym.append(temp_synonym)
-            if (sample_pos_tag[i][0] not in can_be_replaced_list):
-              can_be_replaced_list.append(sample_pos_tag[i][0])
-    
-  # max_replace = int(len(can_be_replaced_list)*i)
-  if (len(candidate_synonym) > 0):
-    # print('Words that can be replaced:', can_be_replaced_list)
-    
-    unique_words = len(can_be_replaced_list)
-    num_perturbed_words = 0
-    
-  
-    
+    for i in range(0, len(sample_pos_tag)):
+        if (sample_pos_tag[i][1] in ('CD', 'JJ', 'JJR', 'JJS', 'NN', 'NNS', 'RB', 'RBR',
+                                     'RBS')):  # ----- Replace the word if it is a noun, adjective, or adverb
+            for syn in wordnet.synsets(sample_pos_tag[i][0]):
+                for l in syn.lemmas():
+                    if (sample_pos_tag[i][0] != l.name()):
+                        temp_synonym = Synonym(sample_pos_tag[i][0], l.name())
+                        candidate_synonym.append(temp_synonym)
+                        if (sample_pos_tag[i][0] not in can_be_replaced_list):
+                            can_be_replaced_list.append(sample_pos_tag[i][0])
 
-    
-    index = 0
-    while (num_perturbed_words < max_replace and num_perturbed_words < unique_words):
-      
-      possible_replacement = []
-      
-      for i in range(0, len(candidate_synonym)):
-        if (candidate_synonym[i].first_word == can_be_replaced_list[index] or candidate_synonym[i].second_word == can_be_replaced_list[index]):
-          possible_replacement.append(candidate_synonym[i])
-              
-              
-      random_candidate = return_random_number(0, len(possible_replacement)-1)
-      
-      original_word = ''
-      new_word = ''
-      if (possible_replacement[random_candidate].first_word == can_be_replaced_list[index]):
-        original_word = possible_replacement[random_candidate].first_word
-        new_word = possible_replacement[random_candidate].second_word
-      elif (possible_replacement[random_candidate].second_word == can_be_replaced_list[index]):
-        original_word = possible_replacement[random_candidate].second_word
-        new_word = possible_replacement[random_candidate].first_word
-          
-      # print(original_word, 'is replaced by', new_word)
-      
-      perturbed_sample_tokenized = nltk.word_tokenize(perturbed_sample)
-      replacement_position = -1
-      for i in range(0, len(perturbed_sample_tokenized)):
-        if (original_word == perturbed_sample_tokenized[i]):
-          replacement_position = i
-              
-      if (replacement_position > -1):
-        perturbed_sample = ""
-        for i in range(0, replacement_position):
-          perturbed_sample += perturbed_sample_tokenized[i] + ' '
-        perturbed_sample += new_word + ' '
-        for i in range(replacement_position+1, len(perturbed_sample_tokenized)):
-          perturbed_sample += perturbed_sample_tokenized[i] + ' '
-    
-        word_replaced = True
-        num_perturbed_words += 1
-          
-          
-      index += 1
-          
-  elif (len(candidate_synonym) == 0):
-    print('No word was replaced.')
+    # max_replace = int(len(can_be_replaced_list)*i)
+    if (len(candidate_synonym) > 0):
+        # print('Words that can be replaced:', can_be_replaced_list)
 
-  
-  if (word_replaced == True):
-    is_sample_perturbed = True
-    num_perturbed_samples += 1
-  
-  # print('Perturbed sample:', perturbed_sample)
-  
-  if (is_sample_perturbed == True):
-    return perturbed_sample
-      
-    
-    
-      
-      
-# print(sentence_pertube("cinemas greatest period started postwar europe italys neorealist movement next 2 3 decades followed frances new wavers caught everyones attention always bergman desolate scandinavian island somewhere making bitter masterpieces 1971 luchino visconti brought artform full circle geographically speaking miraculous work death venice might well called death europoean cinema sixties wound great european filmmakers exceptions generally grew exhausted passed torch new american generation movie brats coppola scorsese co movie absolutely feels like grand summingup viscontis particular obsessions general attempt european filmmakers achieve aesthetic ideal movies rest assured find sterner taskmaster visconti revealed hes playing crowd folks either get behind follow along get left behind pacing challenge slow never without emotional weight incidents far seems loaded symbolic significance sturmunddrang cosmoswe probably never rarefied company terms movies one centurys great writers inspired tale thomas mann one greatest filmmakers directing visconti one greatest actors lead role dirk bogarde swelling almost ceaselessly background gustav mahlers 5th symphony taking full advantage mahlers ability inspire romanticism even cynical breast visconti changes main character aschenbach decrepit composer original persona writer even making bogarde look like mahler geeky mustache specs shaggy hair ducklike walk bogarde way delivers probably greatest performance actor history movies largely silent performance actor deliver reams meaning gesture glance difficult trick without mugging like chaplin merely acting like animated corpsecinema doesnt get better ill ignore complaints ritalinaddicts say slow even legitimate gripe concerning aschenbachs flashbacks antagonistic friend misplaced flashbacks fit neatly within movies thematic concerns ie better path aesthetic perfection passion discipline suddenness shrillness interruptions serve prevent sleepiness among viewers course viewers sleep movie anyway nonstop stream mahler beautiful dying venice would nothing pretty picture movie actually something mostly suffering romantic capital r suffering particular suffering romantic visconti knew whereof spokespoiler guess nothing else see death venice portentous opening credits unforgettable ending bogardes jetblack hairdye dripping sweaty dying head onto chalkwhite face meanwhile distance young tadzio object bogardes dying desire stands ocean points toward horizon like michelangelo sculpture climatic sequence sums agonizing economy everything movie love lust beauty loss ending life set beginning another life cold death midst warm sunny beauty death venice miraculous work art dvd tip simultaneously released visconti masterpiece damned recommend turn english subtitles watching movie ostensibly english dvds sound seems muddy theres lot italian spoken film anyway",0.5))
-print(sentence_pertube("friend lent dvd got director festival think went warned technical aspects movie bit shaky writing good great maybe colored judgment admit liked moviethe standouts actors youssef kerkor really good ernie main character kind pathetic likable way adam jones also directed justin lane excellent roommates drive ernie mad bill character justin lane spends lot film dressed like panda far favorite seemed least onedimensional reminded old college roommate much called guy watching dvd really kind lovable funny acting good soso none bad also really liked vigilante duo ridiculous funnyim giving one high marks even though issues tell watch people cared decided make movie way well done adam jones crew",0.5))
+        unique_words = len(can_be_replaced_list)
+        num_perturbed_words = 0
+
+        index = 0
+        while (num_perturbed_words < max_replace and num_perturbed_words < unique_words):
+
+            possible_replacement = []
+
+            for i in range(0, len(candidate_synonym)):
+                if (candidate_synonym[i].first_word == can_be_replaced_list[index] or candidate_synonym[
+                    i].second_word == can_be_replaced_list[index]):
+                    possible_replacement.append(candidate_synonym[i])
+
+            random_candidate = return_random_number(0, len(possible_replacement) - 1)
+
+            original_word = ''
+            new_word = ''
+            if (possible_replacement[random_candidate].first_word == can_be_replaced_list[index]):
+                original_word = possible_replacement[random_candidate].first_word
+                new_word = possible_replacement[random_candidate].second_word
+            elif (possible_replacement[random_candidate].second_word == can_be_replaced_list[index]):
+                original_word = possible_replacement[random_candidate].second_word
+                new_word = possible_replacement[random_candidate].first_word
+
+            # print(original_word, 'is replaced by', new_word)
+
+            perturbed_sample_tokenized = nltk.word_tokenize(perturbed_sample)
+            replacement_position = -1
+            for i in range(0, len(perturbed_sample_tokenized)):
+                if (original_word == perturbed_sample_tokenized[i]):
+                    replacement_position = i
+
+            if (replacement_position > -1):
+                perturbed_sample = ""
+                for i in range(0, replacement_position):
+                    # replace the words before the replaced word with the original words
+                    perturbed_sample += perturbed_sample_tokenized[i] + ' '
+                # replace the replaced word with the new word
+                perturbed_sample += new_word + ' '
+                for i in range(replacement_position + 1, len(perturbed_sample_tokenized)):
+                    # replace the remaining words with the original words
+                    perturbed_sample += perturbed_sample_tokenized[i] + ' '
+
+                word_replaced = True
+                num_perturbed_words += 1
+
+            index += 1
+
+    elif verbose and len(candidate_synonym) == 0:
+        print('No word was replaced.')
+
+    if (word_replaced == True):
+        num_perturbed_samples += 1
+
+    if perturbed_sample:
+        return perturbed_sample
+    else:
+        # return the original string if we didn't get a perturbed sample: necessary to ensure we don't get a NoneType error
+        return s
+
+
 if __name__ == '__main__':
-  pass
-
-
-
+    s = "friend lent dvd got director festival think went warned technical aspects movie bit shaky writing good great maybe colored judgment admit liked moviethe standouts actors youssef kerkor really good ernie main character kind pathetic likable way adam jones also directed justin lane excellent roommates drive ernie mad bill character justin lane spends lot film dressed like panda far favorite seemed least onedimensional reminded old college roommate much called guy watching dvd really kind lovable funny acting good soso none bad also really liked vigilante duo ridiculous funnyim giving one high marks even though issues tell watch people cared decided make movie way well done adam jones crew"
+    print('original sentence:', s)
+    print('perturbed sentence:', sentence_pertube(s, 1))
