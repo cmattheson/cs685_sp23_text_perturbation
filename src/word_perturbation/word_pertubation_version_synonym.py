@@ -14,7 +14,7 @@ nltk.download('wordnet', quiet=True)
 nltk.download('punkt', quiet=True)
 nltk.download('averaged_perceptron_tagger', quiet=True)
 
-from random import randint, seed, sample, choice
+from random import randint, seed, choice
 from nltk.corpus import wordnet
 
 
@@ -37,10 +37,20 @@ class Synonym:
 # This is the main function wich needs to be called. Will take string as input and gives pertub string as output.
 # s = string and tries to perturb each word in the string with a probability of perturbation_chance
 def sentence_pertube(s, perturbation_chance: float = 0.15, verbose=False):
+    """
+
+    Args:
+        s:
+        perturbation_chance: chance to perturb a character
+        verbose: whether to print logging information
+
+    Returns:
+
+    """
     synonyms: dict[str, set[str]] = {}
 
     if (verbose):
-        print(s)
+        print('original sentence:', s)
 
     # sample_label = row[1]
     sample_tokenized = nltk.word_tokenize(s)
@@ -58,12 +68,14 @@ def sentence_pertube(s, perturbation_chance: float = 0.15, verbose=False):
             for syn in wordnet.synsets(current_word):
                 for l in syn.lemmas():
                     # check that the synonym is not the same as the word
-                    if (sample_pos_tag[i][0] != l.name()):
+                    if verbose:
+                        print('synonym:', l.name())
+                    if sample_pos_tag[i][0] != l.name():
                         # check if the key for this word exists in the dictionary
                         if not current_word in synonyms:
                             synonyms[current_word] = set()  # create a set of synonyms for this word
                         synonyms[current_word].add(l.name())
-                        if (sample_pos_tag[i][0] not in can_be_replaced_list):
+                        if sample_pos_tag[i][0] not in can_be_replaced_list:
                             can_be_replaced_list.append(sample_pos_tag[i][0])
     for word in sample_tokenized:
         r = random.random()
@@ -72,11 +84,20 @@ def sentence_pertube(s, perturbation_chance: float = 0.15, verbose=False):
         else:
             new_words.append(word)
 
+    if verbose:
+        print('perturbed sentence:', ' '.join(new_words))
+
     return ' '.join(new_words)
 
 
 if __name__ == '__main__':
-    s = "friend lent dvd got director festival think went warned technical aspects movie bit shaky writing good great maybe colored judgment admit liked moviethe standouts actors youssef kerkor really good ernie main character kind pathetic likable way adam jones also directed justin lane excellent roommates drive ernie mad bill character justin lane spends lot film dressed like panda far favorite seemed least onedimensional reminded old college roommate much called guy watching dvd really kind lovable funny acting good soso none bad also really liked vigilante duo ridiculous funnyim giving one high marks even though issues tell watch people cared decided make movie way well done adam jones crew"
+    s = "friend lent dvd got director festival think went warned technical aspects movie bit shaky writing good great " \
+        "maybe colored judgment admit liked moviethe standouts actors youssef kerkor really good ernie main character " \
+        "kind pathetic likable way adam jones also directed justin lane excellent roommates drive ernie mad bill " \
+        "character justin lane spends lot film dressed like panda far favorite seemed least onedimensional reminded " \
+        "old college roommate much called guy watching dvd really kind lovable funny acting good soso none bad also " \
+        "really liked vigilante duo ridiculous funnyim giving one high marks even though issues tell watch people " \
+        "cared decided make movie way well done adam jones crew"
     print('original sentence:', s)
     print('perturbed sentence:', sentence_pertube(s, 0.5))
     s2 = "movie movie movie movie movie movie movie"
