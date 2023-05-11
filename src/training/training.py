@@ -269,6 +269,10 @@ def train(model: nn.Module,
 
 
 if __name__ == '__main__':
+    """
+    This script runs some tests to make sure everything is working as expected. 
+    It's outdated and probably won't work anymore.
+    """
     dataset = load_dataset('../data/ag_news.py')
 
     num_classes = len(set(dataset['train']['label']))
