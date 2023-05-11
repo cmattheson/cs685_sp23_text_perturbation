@@ -63,7 +63,6 @@ class SynonymReplacementHandler:
         sample_pos_tag = nltk.pos_tag(sample_tokenized)
 
         # list of original words that can be replaced
-        can_be_replaced_list = []
 
         new_words = []
         for i in range(0, len(sample_pos_tag)):
@@ -71,7 +70,7 @@ class SynonymReplacementHandler:
             # check if we have already gathered synonyms for this word
             if current_word not in self.gathered_synonyms:
                 if (sample_pos_tag[i][1] in ('CD', 'JJ', 'JJR', 'JJS', 'NN', 'NNS', 'RB', 'RBR',
-                                     'RBS')):  # ----- Replace the word if it is a noun, adjective, or adverb
+                                             'RBS')):  # ----- Replace the word if it is a noun, adjective, or adverb
                     for syn in wordnet.synsets(current_word):
                         for l in syn.lemmas():
                             if self.verbose:
@@ -82,8 +81,7 @@ class SynonymReplacementHandler:
                                 if current_word not in self.synonyms:
                                     self.synonyms[current_word] = set()  # create a set of synonyms for this word
                                 self.synonyms[current_word].add(l.name())
-                                if sample_pos_tag[i][0] not in can_be_replaced_list:
-                                    can_be_replaced_list.append(sample_pos_tag[i][0])
+
             self.gathered_synonyms.add(current_word)  # ----- Mark the word as already gathered
         for word in sample_tokenized:
             r = random.random()
