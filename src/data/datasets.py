@@ -42,9 +42,9 @@ class PerturbedSequenceDataset(Dataset):
                  labels,
                  log_directory='./logs/character_perturbation',
                  train_word_perturbation_rate=0.0,
-                 val_word_perturbation_rate=0.3,
+                 val_word_perturbation_rate=0.0,
                  train_char_perturbation_rate=0.0,
-                 val_char_perturbation_rate=5.0,
+                 val_char_perturbation_rate=0.0,
                  tokenizer=BertTokenizer.from_pretrained('bert-base-uncased'),
                  require_elmo_ids=True):
         self.train_char_perturbation_handler = TextPerturbationHandler(log_directory=log_directory,
