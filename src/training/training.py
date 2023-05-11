@@ -8,6 +8,8 @@ from transformers import BertTokenizer
 from datasets import load_dataset
 
 from src.models.bert_models import ElmoBertModel
+from torch.utils.data.dataset import Subset as SubSet
+
 
 
 def train_val_test_split(dataset: torch.utils.data.Dataset,
@@ -88,7 +90,6 @@ def compute_statistics(model: nn.Module,
     pbar = tqdm(dataloader)
     loss = 0
     num_correct = 0
-    num_examples = 0
     for i, data in enumerate(pbar):
         """
         model_kwargs, labels = prepare_data(data,
@@ -176,7 +177,7 @@ def train(model: nn.Module,
         num_epochs = 1
         phases = {'finetune': num_epochs}
     for phase, num_epochs in phases.items():
-        print(f'Phase: {phase}')
+        print(f'\nPhase: {phase}')
         model.setPhase(phase)
         for epoch in range(num_epochs):
             pbar = tqdm(train_loader)
@@ -214,11 +215,25 @@ def train(model: nn.Module,
             time_eval_start = time.time()
 
             if 'val_loader' in kwargs:
-                print('Evaluating on validation set')
+                val_loader = kwargs['val_loader']
+                print('\nEvaluating on validation set')
+                # check if we are using a subset of the dataset
+                if isinstance(val_loader.dataset, SubSet):
+                    # get the original dataset
+                    dataset = val_loader.dataset.dataset
+                else:
+                    # otherwise, we are using the original dataset
+                    dataset = val_loader.dataset
+
+                dataset.eval()  # set the eval flag to true
+
                 val_loss, val_accuracy = compute_statistics(model,
                                                             criterion,
-                                                            kwargs['val_loader'],
+                                                            val_loader,
                                                             device=device)
+                dataset.train()  # set the eval flag to false
+                # reset the perturb_characters flag
+
                 statistics['validation_loss'].append(val_loss)
                 statistics['validation_accuracy'].append(val_accuracy)
             if 'test_loader' in kwargs:
