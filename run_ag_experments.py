@@ -8,7 +8,12 @@ from transformers import BertModel
 from src.experiments.experiment import *
 
 
-def run_baseline():
+def run_baseline() -> None:
+    """
+    Run the baseline experiment on the ag_news dataset
+    Returns: None
+
+    """
     model = ClassifierModel(BertModel.from_pretrained('bert-base-uncased'), nn.Linear(768, num_classes))
     optim = torch.optim.Adam(model.parameters(), lr=0.00003)
     phases = {'warmup': 1, 'finetune': 5}
@@ -25,7 +30,12 @@ def run_baseline():
                    test_data=test_data, train_char_perturbation_rate=5.0, val_char_perturbation_rate=5.0, )
 
 
-def run_ag_news_experiments():
+def run_ag_news_experiments() -> None:
+    """
+    Run the AG News experiments. Uncomment the individual experimental setups to run them.
+    Returns: None
+
+    """
     # --------------------------------------------------------------------------------------------------------------------
     # do the concatenated model test
     #model = ClassifierModel(Bert_Plus_Elmo_Concat(), nn.Linear(768, num_classes))
@@ -38,13 +48,20 @@ def run_ag_news_experiments():
     # --------------------------------------------------------------------------------------------------------------------
     # do the additive model test
     model = ClassifierModel(Bert_Plus_Elmo(), nn.Linear(768, num_classes))
-    optim = torch.optim.Adam(model.parameters(), lr=0.00003)
-    optim = torch.optim.Adam(model.parameters(), lr=0.000003) # 10x smaller learning rate
+    # optim = torch.optim.Adam(model.parameters(), lr=0.00003)
+    # optim = torch.optim.Adam(model.parameters(), lr=0.000003) # 10x smaller learning rate
+    optim = torch.optim.Adam(model.parameters(), lr=0.000001) # 30x smaller learning rate
+    # phases = {'warmup': 1, 'elmo': 1, 'warmup': 1, 'elmo': 1, 'finetune': 5}  # add interleaved warmup and elmo phases
 
-
-    run_experiment('ag_news_additive_bert_elmo_model_lr_000003', phases, model, optim, train_data, test_data=test_data,
+    run_experiment('ag_news_additive_bert_elmo_model_lr_000001', phases, model, optim, train_data, test_data=test_data,
                    train_char_perturbation_rate=5.0, val_char_perturbation_rate=5.0, require_elmo_ids=True)
 
+def run_ag_experiments_separate_layernorm() -> None:
+    """
+
+    Returns:
+
+    """
 
 if __name__ == '__main__':
     all_data = load_dataset('src/data/ag_news.py')
