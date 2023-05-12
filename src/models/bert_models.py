@@ -16,15 +16,15 @@ class Bert_Plus_Elmo(ElmoBertModel):
     This model sums the BERT and ELMo embeddings
     """
 
-    def __init__(self, options_file='src/models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_options.json',
+    def __init__(self, elmo_embedder_dim=128,
+                 options_file='src/models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_options.json',
                  weight_file='src/models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_weights.hdf5'):
         super().__init__()
         self.bert = BertModel.from_pretrained('bert-base-uncased')
-        # self.elmo_encoder = ElmoEncoderForBert(options_file=options_file, weight_file=weight_file)
-        # Project the 128-dimensional ELMo vectors to 768 dimensions to match BERT's embedding dimension
-        # self.elmo_projection = nn.Linear(128, 768)
         # don't use dropout or layernorm on the ELMo vectors, as BERT already uses them and we just add them together
         self.elmo_embedding = _ElmoCharacterEncoder(options_file=options_file, weight_file=weight_file)
+        self.elmo_projection = nn.Linear(elmo_embedder_dim, 768)
+
 
 
     def forward(self, input_ids, elmo_input_ids, attention_mask=None):
@@ -34,10 +34,9 @@ class Bert_Plus_Elmo(ElmoBertModel):
         input_shape = input_ids.size()
         extended_attention_mask: torch.Tensor = self.bert.get_extended_attention_mask(attention_mask, input_shape)
         bert_embedding: torch.Tensor = self.bert.embeddings.word_embeddings(input_ids)
-        # elmo_embedding: torch.Tensor = self.elmo_projection(self.elmo_embedder(elmo_input_ids)['token_embedding'])
-        elmo_embedding = self.elmo_embedding(elmo_input_ids)
-        embeddings: torch.Tensor = bert_embedding + elmo_embedding[:, 1:elmo_embedding.size(1) - 1, :] \
-                                   + position_embedding
+        elmo_embedding = self.elmo_embedding(elmo_input_ids)['token_embedding']
+        elmo_embedding = self.elmo_projection(elmo_embedding)
+        embeddings: torch.Tensor = bert_embedding + elmo_embedding[:, 1:elmo_embedding.size(1) - 1, :] + position_embedding
         embeddings: torch.Tensor = self.bert.embeddings.LayerNorm(embeddings)
         embeddings: torch.Tensor = self.bert.embeddings.dropout(embeddings)
         output_representations: torch.Tensor = self.bert.encoder(
