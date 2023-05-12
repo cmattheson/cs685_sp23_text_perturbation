@@ -1,7 +1,11 @@
+
+# external libraries
 import os
 import matplotlib.pyplot as plt
-from src.character_perturbation.text_perturbation import TextPerturbationHandler
 from typing import Dict, List, Union, Tuple
+
+# other project modules
+from src.character_perturbation.text_perturbation import TextPerturbationHandler
 
 
 def format_statistic_to_string(statistic: Union[float, List[float]]) -> str:
@@ -28,7 +32,7 @@ def save_statistics(pathname: str, statistics: Dict[str, List[float]]):
     for stat in statistics.keys():
         os.makedirs(pathname, exist_ok=True)
         formatted_stat = format_statistic_to_string(statistics.get(stat))
-        with open(os.path.join(pathname, f'{stat}.txt'), 'w') as file:
+        with open(f'{pathname}/{stat}.txt', 'w') as file:
             file.write(formatted_stat)
 
 
@@ -49,7 +53,7 @@ def plot_statistics(
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.legend(labels)
-    plt.savefig(os.path.join(pathname, f'{title}.png'))
+    plt.savefig(f'{pathname}/{title}.png')
     plt.close()
 
 
