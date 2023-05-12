@@ -3,57 +3,55 @@ from typing import Callable
 import pandas as pd
 import torch
 import torch.nn as nn
-from tqdm import tqdm
-from transformers import BertTokenizer
-from datasets import load_dataset
-
-from src.models.bert_models import ElmoBertModel
+from torch.utils.data import Dataset
 from torch.utils.data.dataset import Subset as SubSet
 
+from tqdm import tqdm
+from datasets import load_dataset
+
+from typing import Optional, List
+import time
+from src.util import *
+from transformers import BertTokenizer
+from src.models.bert_models import ElmoBertModel, Bert_Plus_Elmo_Concat, ClassifierModel
+from torch.utils.data import DataLoader
+from src.data.datasets import *
+from allennlp.modules.elmo import batch_to_ids
 
 
-def train_val_test_split(dataset: torch.utils.data.Dataset,
-                         pct_train=0.8,
-                         pct_val=0.2) \
-        -> tuple[torch.utils.data.Dataset, torch.utils.data.Dataset, torch.utils.data.Dataset] or tuple[torch.utils.data.Dataset, torch.utils.data.Dataset]:
-    """
+def train_val_test_split(
+        dataset: Dataset,
+        pct_train: float = 0.8,
+        pct_val: float = 0.2
+) -> [Dataset, Dataset, Optional[Dataset]]:
 
-    Args:
-        dataset:
+    row_count = len(dataset)
+    train_size = int(pct_train * row_count)
+    val_size = int(pct_val * row_count)
+    test_size = row_count - (train_size + val_size)
 
-    Returns:
-
-    """
-    from torch.utils.data import Dataset
-    train_size = int(pct_train * len(dataset))
-    val_size = int(pct_val * len(dataset))
-    test_size = len(dataset) - train_size - val_size
     train_dataset: Dataset
     val_dataset: Dataset
     test_dataset: Dataset
     if pct_train + pct_val == 1:
-        train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size])
+        train_dataset, val_dataset = torch.utils.data.random_split(
+            dataset, [train_size, val_size]
+        )
         return train_dataset, val_dataset
     else:
-        train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_size, test_size])
+        train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(
+            dataset, [train_size, val_size, test_size]
+        )
         return train_dataset, val_dataset, test_dataset
 
 
-def prepare_data(data: tuple[tuple[str], torch.tensor],
-                 tokenizer: BertTokenizer,
-                 require_elmo_embeddings: bool = True,
-                 device: str = 'cuda'):
-    """
+def prepare_data(
+        data: [List[str], torch.tensor],
+        tokenizer: BertTokenizer,
+        require_elmo_embeddings: bool = True,
+        device: str = 'cuda'
+):
 
-    Args:
-        data:
-        tokenizer:
-        require_elmo_embeddings:
-        device:
-
-    Returns:
-
-    """
     sequences, labels = data
     print(type(sequences[0]))
     labels = labels.to(device)
@@ -69,24 +67,13 @@ def prepare_data(data: tuple[tuple[str], torch.tensor],
     return model_kwargs, labels
 
 
-def compute_statistics(model: nn.Module,
-                       criterion: Callable,
-                       dataloader: torch.utils.data.DataLoader,
-                       device: str = 'cuda') \
-        -> tuple[float, float]:
-    """
+def compute_statistics(
+        model: nn.Module,
+        criterion: Callable,
+        dataloader: torch.utils.data.DataLoader,
+        device: str = 'cuda'
+) -> [float, float]:
 
-    Args:
-        model: nn.
-        criterion:
-        dataloader:
-        tokenizer:
-        require_elmo_embeddings:
-        device:
-
-    Returns: (loss, accuracy)
-
-    """
     pbar = tqdm(dataloader)
     loss = 0
     num_correct = 0
@@ -157,7 +144,6 @@ def train(model: nn.Module,
 
     """
     assert not phases or not num_epochs, 'Either specify the number of epochs or the phases'
-    import time
 
     statistics = {'training_loss': [], 'validation_loss': [], 'test_loss': [],
                   'training_accuracy': [], 'validation_accuracy': [], 'test_accuracy': [],
@@ -273,16 +259,10 @@ if __name__ == '__main__':
     This script runs some tests to make sure everything is working as expected. It also serves as an example of how to
     use the code in this repository.
     """
-    from src.util import *
-    from transformers import BertTokenizer
-    from src.models.bert_models import Bert_Plus_Elmo_Concat, Bert_Plus_Elmo, ClassifierModel
-    from torch.utils.data import DataLoader
-    from src.data.datasets import *
 
     dataset = load_dataset('../data/ag_news.py')
 
     num_classes = len(set(dataset['train']['label']))
-
 
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
@@ -307,6 +287,5 @@ if __name__ == '__main__':
                        record_training_statistics=True,
                        model_save_path='../models/pretrained/bert_elmo_ag_news_classifier.pt',
                        record_time_statistics=True)
-
 
     save_statistics('../../logs/experiments/example_experiment', statistics)
