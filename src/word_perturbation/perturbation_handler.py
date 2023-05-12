@@ -61,7 +61,7 @@ class WordPerturbationHandler:
     def perturb_text_with_synonyms(self, sequence: str) -> str:
 
         if self.verbose:
-            print(s)
+            print(sequence)
 
         sample_pos_tag = self.generate_unique_word_pos_pairs(sequence=sequence)
 
@@ -73,7 +73,7 @@ class WordPerturbationHandler:
 
 
 if __name__ == '__main__':
-    s = '''
+    test_s = '''
     friend lent dvd got director festival think went warned technical aspects movie bit shaky 
     writing good great maybe colored judgment admit liked moviethe standouts actors youssef 
     kerkor really good ernie main character kind pathetic likable way adam jones also directed 
@@ -86,7 +86,7 @@ if __name__ == '__main__':
 
     handler = WordPerturbationHandler(perturbation_chance=0.5)
 
-    print('original sentence:', s)
-    print('perturbed sentence:', handler.perturb_text_with_synonyms(s))
+    print('original sentence:', test_s)
+    print('perturbed sentence:', handler.perturb_text_with_synonyms(test_s))
     print('original sentence:', repeated_s)
     print('perturbed sentence:', handler.perturb_text_with_synonyms(repeated_s))
