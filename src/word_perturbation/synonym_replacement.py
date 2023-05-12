@@ -37,13 +37,13 @@ class SynonymReplacementHandler:
             verbose: whether to print logging information
         """
         self.synonyms: dict[str, set[str]] = {}
-        self.gathered_synonyms: set = set()
-        self.perturbation_chance = perturbation_chance
-        self.verbose = verbose
+        self.gathered_synonyms: set[str] = set()
+        self.perturbation_chance: float = perturbation_chance
+        self.verbose: bool = verbose
 
     # This is the main function wich needs to be called. Will take string as input and gives pertub string as output.
     # s = string and tries to perturb each word in the string with a probability of perturbation_chance
-    def sentence_perturbe(self, s: str):
+    def sentence_perturbe(self, s: str) -> str:
         """
 
         Args:
@@ -60,16 +60,17 @@ class SynonymReplacementHandler:
 
         # sample_label = row[1]
         sample_tokenized = nltk.word_tokenize(s)
-        sample_pos_tag = nltk.pos_tag(sample_tokenized)
+        sample_pos_tag: list[tuple[str, str]] = nltk.pos_tag(sample_tokenized)
 
         # list of original words that can be replaced
 
-        new_words = []
-        for i in range(0, len(sample_pos_tag)):
-            current_word = sample_pos_tag[i][0]
+        new_words: list[str] = []
+        for token in sample_pos_tag:
+            current_word: str = token[0]
+            tag: str = token[1]
             # check if we have already gathered synonyms for this word
             if current_word not in self.gathered_synonyms:
-                if (sample_pos_tag[i][1] in ('CD', 'JJ', 'JJR', 'JJS', 'NN', 'NNS', 'RB', 'RBR',
+                if (tag in ('CD', 'JJ', 'JJR', 'JJS', 'NN', 'NNS', 'RB', 'RBR',
                                              'RBS')):  # ----- Replace the word if it is a noun, adjective, or adverb
                     for syn in wordnet.synsets(current_word):
                         for l in syn.lemmas():
