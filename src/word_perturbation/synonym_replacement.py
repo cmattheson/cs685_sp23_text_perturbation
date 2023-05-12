@@ -111,5 +111,5 @@ if __name__ == '__main__':
     print('original sentence:', s)
     print('perturbed sentence:', handler.sentence_perturbe(s))
     s2 = "movie movie movie movie movie movie movie"
-    print('original sentence:', s)
+    print('original sentence:', s2)
     print('perturbed sentence:', handler.sentence_perturbe(s2))
