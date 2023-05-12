@@ -45,6 +45,43 @@ class Bert_Plus_Elmo(ElmoBertModel):
         )
         return output_representations
 
+class Bert_Plus_Elmo_Separate_Layernorm(ElmoBertModel):
+    """
+    This model sums the BERT and ELMo embeddings
+    """
+
+    def __init__(self, elmo_embedder_dim=128,
+                 options_file='src/models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_options.json',
+                 weight_file='src/models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_weights.hdf5'):
+        super().__init__()
+        self.bert = BertModel.from_pretrained('bert-base-uncased')
+        # don't use dropout or layernorm on the ELMo vectors, as BERT already uses them and we just add them together
+        self.elmo_embedding = _ElmoCharacterEncoder(options_file=options_file, weight_file=weight_file)
+        self.elmo_projection = nn.Linear(elmo_embedder_dim, 768)
+        self.elmo_layernorm = nn.LayerNorm(768)
+
+
+
+
+    def forward(self, input_ids, elmo_input_ids, attention_mask=None):
+        seq_len = input_ids.shape[1]
+        position_ids: torch.Tensor = self.bert.embeddings.position_ids[:, :seq_len]
+        position_embedding: torch.Tensor = self.bert.embeddings.position_embeddings(position_ids)
+        input_shape = input_ids.size()
+        extended_attention_mask: torch.Tensor = self.bert.get_extended_attention_mask(attention_mask, input_shape)
+        bert_embedding: torch.Tensor = self.bert.embeddings.word_embeddings(input_ids)
+        bert_embedding = self.bert.embeddings.LayerNorm(bert_embedding)
+        elmo_embedding = self.elmo_embedding(elmo_input_ids)['token_embedding']
+        elmo_embedding = self.elmo_projection(elmo_embedding)
+        elmo_embedding = self.elmo_layernorm(elmo_embedding)
+        embeddings: torch.Tensor = bert_embedding + elmo_embedding[:, 1:elmo_embedding.size(1) - 1, :] + position_embedding
+        embeddings: torch.Tensor = self.bert.embeddings.dropout(embeddings)
+        output_representations: torch.Tensor = self.bert.encoder(
+            embeddings,
+            attention_mask=extended_attention_mask,
+        )
+        return output_representations
+
 
 
 class Bert_Plus_Elmo_Concat(ElmoBertModel):
