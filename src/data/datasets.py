@@ -6,7 +6,7 @@ from transformers import BertTokenizer
 from tokenizers import *
 from src.character_perturbation.text_perturbation import *
 from torch.nn.functional import pad
-from src.word_perturbation.word_pertubation_version_synonym import sentence_pertube
+from src.word_perturbation.word_pertubation_version_synonym import perturb_text_with_synonyms
 
 
 class CustomDataset(Dataset):
@@ -60,7 +60,7 @@ class PerturbedSequenceDataset(Dataset):
         text = self.data[idx]
 
         if self.word_perturbation_rate > 0:
-            text = sentence_pertube(text, self.word_perturbation_rate)
+            text = perturb_text_with_synonyms(text, self.word_perturbation_rate)
         if self.perturb_characters:
             text = self.handler.perturb_string(text)
         if self.tokenizer:
@@ -114,7 +114,7 @@ class PerturbedSequenceDataset(Dataset):
         label = self.labels[idx]
         text = self.data[idx]
         if self.word_perturbation_rate > 0:
-            text = sentence_pertube(text, self.word_perturbation_rate)
+            text = perturb_text_with_synonyms(text, self.word_perturbation_rate)
         if not self.eval_mode:
             if self.char_perturbation_rate > 0:
                 text = self.handler_train.perturb_string(text)
