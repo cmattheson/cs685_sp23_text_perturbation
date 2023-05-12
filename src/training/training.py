@@ -11,11 +11,10 @@ from src.models.bert_models import ElmoBertModel
 from torch.utils.data.dataset import Subset as SubSet
 
 
-
 def train_val_test_split(dataset: torch.utils.data.Dataset,
                          pct_train=0.8,
                          pct_val=0.2) \
-        -> tuple[torch.utils.data.Dataset, torch.utils.data.Dataset, torch.utils.data.Dataset] or tuple[torch.utils.data.Dataset, torch.utils.data.Dataset]:
+        -> tuple[torch.utils.data.Dataset, torch.utils.data.Dataset]:
     """
 
     Args:
@@ -26,17 +25,12 @@ def train_val_test_split(dataset: torch.utils.data.Dataset,
     """
     from torch.utils.data import Dataset
     train_size = int(pct_train * len(dataset))
-    val_size = int(pct_val * len(dataset))
-    test_size = len(dataset) - train_size - val_size
+    val_size = len(dataset) - train_size
     train_dataset: Dataset
     val_dataset: Dataset
-    test_dataset: Dataset
-    if pct_train + pct_val == 1:
-        train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size])
-        return train_dataset, val_dataset
-    else:
-        train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_size, test_size])
-        return train_dataset, val_dataset, test_dataset
+    train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size])
+    return train_dataset, val_dataset
+
 
 
 def prepare_data(data: tuple[tuple[str], torch.tensor],
@@ -214,7 +208,7 @@ def train(model: nn.Module,
 
             time_eval_start = time.time()
 
-            if 'val_loader' in kwargs:
+            if 'val_loader' in kwargs and kwargs['val_loader'] is not None:
                 val_loader = kwargs['val_loader']
                 print('\nEvaluating on validation set')
                 # check if we are using a subset of the dataset
@@ -236,7 +230,7 @@ def train(model: nn.Module,
 
                 statistics['validation_loss'].append(val_loss)
                 statistics['validation_accuracy'].append(val_accuracy)
-            if 'test_loader' in kwargs:
+            if 'test_loader' in kwargs and kwargs['test_loader'] is not None:
                 print('Evaluating on test set')
                 test_loss, test_accuracy = compute_statistics(model,
                                                               criterion,
@@ -283,7 +277,6 @@ if __name__ == '__main__':
 
     num_classes = len(set(dataset['train']['label']))
 
-
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
     encoder = Bert_Plus_Elmo_Concat(options_file='../models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_options.json',
@@ -291,7 +284,9 @@ if __name__ == '__main__':
 
     criterion = torch.nn.functional.cross_entropy
 
-    dataset = PerturbedSequenceDataset(dataset['train']['text'][:100], torch.tensor(dataset['train']['label'][:100]), log_directory='../../logs/character_perturbation')
+    dataset = PerturbedSequenceDataset(dataset['train']['text'], torch.tensor(dataset['train']['label']),
+                                       log_directory='../../logs/character_perturbation',
+                                       train_word_perturbation_rate=0)
     train_set, val_set = train_val_test_split(dataset)
     train_loader = DataLoader(train_set, batch_size=32, num_workers=2, shuffle=True, persistent_workers=True)
     val_loader = DataLoader(val_set, batch_size=32, num_workers=2, shuffle=True, persistent_workers=True)
@@ -305,8 +300,7 @@ if __name__ == '__main__':
                        val_loader=val_loader,
                        phases=phases,
                        record_training_statistics=True,
-                       model_save_path='../models/pretrained/bert_elmo_ag_news_classifier.pt',
+                       model_save_path=f'../models/pretrained/bert_elmo_ag_news_classifier.pt',
                        record_time_statistics=True)
-
 
     save_statistics('../../logs/experiments/example_experiment', statistics)
