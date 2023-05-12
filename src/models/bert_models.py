@@ -3,23 +3,28 @@ import torch.nn as nn
 from allennlp.modules.elmo import _ElmoCharacterEncoder
 from transformers import BertModel
 
+
 class ElmoBertModel(nn.Module):
     def __init__(self):
         super().__init__()
+
+
+
+
 class Bert_Plus_Elmo(ElmoBertModel):
     """
     This model sums the BERT and ELMo embeddings
     """
+
     def __init__(self, options_file='src/models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_options.json',
-                                                   weight_file='src/models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_weights.hdf5'):
+                 weight_file='src/models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_weights.hdf5'):
         super().__init__()
         self.bert = BertModel.from_pretrained('bert-base-uncased')
-        self.elmo_embedder = _ElmoCharacterEncoder(options_file=options_file,
-                                                   weight_file=weight_file)
+        # self.elmo_encoder = ElmoEncoderForBert(options_file=options_file, weight_file=weight_file)
         # Project the 128-dimensional ELMo vectors to 768 dimensions to match BERT's embedding dimension
-        self.elmo_projection = nn.Linear(128, 768)
-
-
+        # self.elmo_projection = nn.Linear(128, 768)
+        # don't use dropout or layernorm on the ELMo vectors, as BERT already uses them and we just add them together
+        self.elmo_embedding = _ElmoCharacterEncoder(options_file=options_file, weight_file=weight_file)
 
 
     def forward(self, input_ids, elmo_input_ids, attention_mask=None):
@@ -29,8 +34,10 @@ class Bert_Plus_Elmo(ElmoBertModel):
         input_shape = input_ids.size()
         extended_attention_mask: torch.Tensor = self.bert.get_extended_attention_mask(attention_mask, input_shape)
         bert_embedding: torch.Tensor = self.bert.embeddings.word_embeddings(input_ids)
-        elmo_embedding: torch.Tensor = self.elmo_projection(self.elmo_embedder(elmo_input_ids)['token_embedding'])
-        embeddings: torch.Tensor = bert_embedding + elmo_embedding[:, 1:elmo_embedding.size(1)-1, :] + position_embedding
+        # elmo_embedding: torch.Tensor = self.elmo_projection(self.elmo_embedder(elmo_input_ids)['token_embedding'])
+        elmo_embedding = self.elmo_embedding(elmo_input_ids)
+        embeddings: torch.Tensor = bert_embedding + elmo_embedding[:, 1:elmo_embedding.size(1) - 1, :] \
+                                   + position_embedding
         embeddings: torch.Tensor = self.bert.embeddings.LayerNorm(embeddings)
         embeddings: torch.Tensor = self.bert.embeddings.dropout(embeddings)
         output_representations: torch.Tensor = self.bert.encoder(
@@ -41,63 +48,29 @@ class Bert_Plus_Elmo(ElmoBertModel):
 
 
 
-
-class Bert_Plus_Elmo_Skip(ElmoBertModel):
-    """
-    This model sums the BERT and ELMo embeddings (not fully implemented)
-    """
-    def __init__(self, elmo_strength_out=1.0, learn_elmo_strength=False, options_file='src/models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_options.json',
-                                                   weight_file='src/models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_weights.hdf5'):
-        super().__init__()
-        self.elmo_strength_out = elmo_strength_out
-        self.bert = BertModel.from_pretrained('bert-base-uncased')
-        if learn_elmo_strength:
-            self.elmo_strength_out = nn.Parameter(torch.tensor(elmo_strength_out))
-        else:
-            self.elmo_strength_out = elmo_strength_out
-        self.elmo_embedder = _ElmoCharacterEncoder(options_file=options_file,
-                                                   weight_file=weight_file)
-        # Project the 128-dimensional ELMo vectors to 768 dimensions to match BERT's embedding dimension
-        self.elmo_projection = nn.Linear(128, 768)
-
-
-    def forward(self, bert_input_ids, elmo_input_ids, attention_mask=None):
-        input_shape = bert_input_ids.size()
-        extended_attention_mask: torch.Tensor = self.bert.get_extended_attention_mask(attention_mask, input_shape)
-
-        bert_embedding = self.bert.embeddings.word_embeddings(bert_input_ids)
-        elmo_embedding = self.elmo_projection(self.elmo_embedder(elmo_input_ids)['token_embedding'])
-        elmo_embedding[:, 1:, :] = 0 # zero out the embeddings for the BOS token
-        elmo_embedding[:, -1, :] = 0 # zero out the embeddings for the EOS token
-
-        embeddings = bert_embedding + self.elmo_strength_in * elmo_embedding
-        output_representations = self.bert.encoder(
-            embeddings,
-            attention_mask=extended_attention_mask,
-        ) + self.elmo_strength_out*elmo_embedding
-        return output_representations
-
-
 class Bert_Plus_Elmo_Concat(ElmoBertModel):
     """
     This model uses BERT and ELMo embeddings to produce a single embedding for each token. Unlike the additive model,
     it concatenates the BERT and ELMo embeddings along the sequence dimension. This should allow the model to attend to
     both the BERT and ELMo embeddings at the same time.
     """
-    def __init__(self,  elmo_embedder_dim=128, elmo_strength=1.0, add_elmo_positional_encoding=True, options_file='src/models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_options.json',
-                                                   weight_file='src/models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_weights.hdf5'):
+
+    def __init__(self, elmo_embedder_dim=128,
+                 options_file='src/models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_options.json',
+                 weight_file='src/models/pretrained/elmo_2x1024_128_2048cnn_1xhighway_weights.hdf5',
+                 layer_norm_elmo_separately=False):
         super().__init__()
+        self.layer_norm_elmo_separately = layer_norm_elmo_separately
         self.bert = BertModel.from_pretrained('bert-base-uncased')
         self.linear = nn.Linear(768, 256)
         self.elmo_embedder = _ElmoCharacterEncoder(options_file=options_file,
                                                    weight_file=weight_file)
+        self.elmo_layernorm = nn.LayerNorm(768)
+        self.elmo_dropout = nn.Dropout(0.1)
         # Project the 128-dimensional ELMo vectors to 768 dimensions to match BERT's embedding dimension
         self.elmo_projection = nn.Linear(elmo_embedder_dim, 768)
-        self.elmo_strength = elmo_strength
-        self.add_elmo_positional_encoding = add_elmo_positional_encoding
 
-
-    def forward(self, input_ids, elmo_input_ids, attention_mask=None, layer_norm_elmo_separately=True):
+    def forward(self, input_ids, elmo_input_ids, attention_mask=None):
         """
 
         Args:
@@ -112,49 +85,48 @@ class Bert_Plus_Elmo_Concat(ElmoBertModel):
         input_embeds = self.bert.embeddings.word_embeddings(input_ids)
         position_embedding = self.bert.embeddings.position_embeddings(position_ids)
         bert_embedding = input_embeds + position_embedding
-        if layer_norm_elmo_separately:
+        if self.layer_norm_elmo_separately:
             bert_embedding = self.bert.embeddings.LayerNorm(bert_embedding)
             bert_embedding = self.bert.embeddings.dropout(bert_embedding)
 
         # get the elmo encoding
-        #print(elmo_input_ids.shape)
+        # print(elmo_input_ids.shape)
         elmo_encoding = self.elmo_embedder(elmo_input_ids)
-        #print('token embedding', elmo_encoding['token_embedding'].shape)
+        # print('token embedding', elmo_encoding['token_embedding'].shape)
         # elmo_encoding['token_embedding'] Shape: (batch_size, seq_len, 128)
         elmo_embedding = self.elmo_projection(elmo_encoding['token_embedding'])  # shape (batch_size, seq_len, 768)
 
-        if self.add_elmo_positional_encoding:
-            # use the same positional embedding for elmo as for bert
-            #print(position_embedding.shape)
-
-            # drop the first and last position embeddings, since they are for the BOS and EOS tokens
-            elmo_embedding = elmo_embedding[:, 1:elmo_embedding.size(1) - 1, :] + position_embedding
-        if layer_norm_elmo_separately:
-            elmo_embedding = self.bert.embeddings.LayerNorm(elmo_embedding)
-            elmo_embedding = self.bert.embeddings.dropout(elmo_embedding)
+        # use the same positional embedding for elmo as for bert
+        # drop the first and last position embeddings, since they are for the BOS and EOS tokens
+        elmo_embedding = elmo_embedding[:, 1:elmo_embedding.size(1) - 1, :] + position_embedding
+        if self.layer_norm_elmo_separately:
+            elmo_embedding = self.elmo_layernorm(elmo_embedding)
+            elmo_embedding = self.elmo_dropout(elmo_embedding)
 
         # get the attention mask for elmo (should be the same as the bert mask)
 
         assert attention_mask is not None
-        #print('bert mask', attention_mask.shape)
 
         # combine the bert and elmo embeddings by concatenating them along the sequence length dimension
         input_shape = (input_ids.size()[0], input_ids.size()[1] + elmo_embedding.shape[1])
         combined_attention_mask = torch.cat([attention_mask, attention_mask], dim=1)
-        extended_attention_mask: torch.Tensor = self.bert.get_extended_attention_mask(combined_attention_mask, input_shape)
+        extended_attention_mask: torch.Tensor = self.bert.get_extended_attention_mask(combined_attention_mask,
+                                                                                      input_shape)
         combined_embedding = torch.concat([bert_embedding, elmo_embedding], dim=1)
-        if not layer_norm_elmo_separately:
+        if not self.layer_norm_elmo_separately:
+            # just concatenate the embeddings and layer norm them together
             combined_embedding = self.bert.embeddings.LayerNorm(combined_embedding)
             combined_embedding = self.bert.embeddings.dropout(combined_embedding)
         #  combined_embedding = bert_embedding
         #  extended_attention_mask: torch.Tensor = self.bert.get_extended_attention_mask(attention_mask,
-                                                                                      #input_ids.shape)
+        # input_ids.shape)
         output_representations = self.bert.encoder(
             combined_embedding,
             attention_mask=extended_attention_mask,
         )
 
         return output_representations
+
 
 class ClassifierModel(nn.Module):
     def __init__(self, encoder, classifier):
@@ -206,7 +178,8 @@ class ClassifierModel(nn.Module):
             for param in self.encoder.elmo_embedder.parameters():
                 param.requires_grad = False
 
-if __name__=='__main__':
+
+if __name__ == '__main__':
     model = Bert_Plus_Elmo_Concat()
     for name, param in model.named_modules():
         print(name)
