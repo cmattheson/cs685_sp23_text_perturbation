@@ -265,7 +265,7 @@ def train(model: nn.Module,
 if __name__ == '__main__':
     """
     This script runs some tests to make sure everything is working as expected. It also serves as an example of how to
-    use the code in this repository.
+    use the code in this repository. Not guaranteed to work out of the box as it was primarily used for testing.
     """
     from src.util import *
     from transformers import BertTokenizer
