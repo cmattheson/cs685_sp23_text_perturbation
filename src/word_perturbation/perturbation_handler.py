@@ -11,6 +11,7 @@ class WordPerturbationHandler:
 
     def __init__(self, perturbation_chance: float = 0.15, verbose: bool = False):
 
+        assert 0 <= perturbation_chance <= 1, 'Perturbation chance needs to be between 0 and 1'
         self.perturbation_chance = perturbation_chance
         self.verbose = verbose
         self.replaceable_parts_of_speech = [
@@ -59,8 +60,6 @@ class WordPerturbationHandler:
 
     def perturb_text_with_synonyms(self, sequence: str) -> str:
 
-        assert 0 <= self.perturbation_chance <= 1, 'Perturbation chance needs to be between 0 and 1'
-
         if self.verbose:
             print(s)
 
@@ -86,6 +85,7 @@ if __name__ == '__main__':
     repeated_s = 'movie movie movie movie movie movie movie'
 
     handler = WordPerturbationHandler(perturbation_chance=0.5)
+    handler.perturb_text_with_synonyms('Is this out of order?')
 
     print('original sentence:', s)
     print('perturbed sentence:', handler.perturb_text_with_synonyms(s))
