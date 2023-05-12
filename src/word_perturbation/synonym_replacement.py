@@ -36,7 +36,7 @@ class SynonymReplacementHandler:
             perturbation_chance: chance to perturb a word
             verbose: whether to print logging information
         """
-        self.synonyms: dict[str, set[str]] = {}
+        self.synonyms: dict[str, list[str]] = {}
         self.gathered_synonyms: set[str] = set()
         self.perturbation_chance: float = perturbation_chance
         self.verbose: bool = verbose
@@ -68,22 +68,24 @@ class SynonymReplacementHandler:
         for token in sample_pos_tag:
             current_word: str = token[0]
             tag: str = token[1]
+            synonyms: set[str] = set()
             # check if we have already gathered synonyms for this word
             if current_word not in self.gathered_synonyms:
                 if (tag in ('CD', 'JJ', 'JJR', 'JJS', 'NN', 'NNS', 'RB', 'RBR',
-                                             'RBS')):  # ----- Replace the word if it is a noun, adjective, or adverb
+                            'RBS')):  # ----- Replace the word if it is a noun, adjective, or adverb
                     for syn in wordnet.synsets(current_word):
                         for l in syn.lemmas():
-                            if self.verbose:
-                                print('synonym:', l.name())
-                            # check that the synonym is not the same as the word
+                            # check that the synonym is not the same as the word itself
                             if current_word != l.name():
+                                if self.verbose:
+                                    print('current_word:', current_word, 'synonym:', l.name())
                                 # check if the key for this word exists in the dictionary
-                                if current_word not in self.synonyms:
-                                    self.synonyms[current_word] = set()  # create a set of synonyms for this word
-                                self.synonyms[current_word].add(l.name())
+                                synonyms.add(l.name())
+                if synonyms:
+                    self.synonyms[current_word] = list(synonyms)
 
             self.gathered_synonyms.add(current_word)  # ----- Mark the word as already gathered
+
         for word in sample_tokenized:
             r = random.random()
             if r <= self.perturbation_chance and word in self.synonyms.keys():
@@ -101,7 +103,7 @@ if __name__ == '__main__':
     """
     This is a test script to test the functionality of the class.
     """
-    handler = SynonymReplacementHandler(perturbation_chance=1)
+    handler = SynonymReplacementHandler(perturbation_chance=0.5)
     s = "friend lent dvd got director festival think went warned technical aspects movie bit shaky writing good great " \
         "maybe colored judgment admit liked moviethe standouts actors youssef kerkor really good ernie main character " \
         "kind pathetic likable way adam jones also directed justin lane excellent roommates drive ernie mad bill " \
