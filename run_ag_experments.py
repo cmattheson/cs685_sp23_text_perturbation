@@ -14,7 +14,7 @@ def run_baseline_perturbed_test():
 
 
     test_set = PerturbedSequenceDataset(all_data['test']['text'], torch.tensor(all_data['test']['label']),
-                                        require_elmo_ids=False, word_perturbation_rate=0.0)
+                                        require_elmo_ids=False, train_word_perturbation_rate=0.0)
 
     criterion = torch.nn.functional.cross_entropy
     test_loader = DataLoader(test_set, batch_size=32, num_workers=2, shuffle=True, persistent_workers=True)
@@ -30,10 +30,21 @@ def run_baseline(phases):
 
     # train set with no perturbation
     train_set = PerturbedSequenceDataset(all_data['train']['text'],
-                                         torch.tensor(all_data['train']['label']), train_char_perturbation_rate=0, require_elmo_ids=False, word_perturbation_rate=0.0)
+                                         torch.tensor(all_data['train']['label']),
+                                         train_char_perturbation_rate=0,
+                                         require_elmo_ids=False,
+                                         train_char_perturbation_weight=0.0,
+                                         train_word_perturbation_weight=0.0,
+                                         val_char_perturbation_rate=5.0,
+                                         val_word_perturbation_rate=0.0)
     train_set, val_set = train_val_test_split(train_set, pct_train=0.8, pct_val=0.2)
     test_set = PerturbedSequenceDataset(all_data['test']['text'], torch.tensor(all_data['test']['label']),
-                                        require_elmo_ids=False)
+                                        require_elmo_ids=False,
+                                        train_char_perturbation_weight=0.0,
+                                        train_word_perturbation_weight=0.0,
+                                        val_char_perturbation_rate=5.0,
+                                        val_word_perturbation_rate=0.0
+                                        )
     test_set.eval()
 
     criterion = torch.nn.functional.cross_entropy
@@ -56,7 +67,13 @@ def run_baseline(phases):
     model = ClassifierModel(BertModel.from_pretrained('bert-base-uncased'), nn.Linear(768, num_classes))
 
     train_set = PerturbedSequenceDataset(all_data['train']['text'],
-                                         torch.tensor(all_data['train']['label']), require_elmo_ids=False, train_char_perturbation_rate=5.0)
+                                         torch.tensor(all_data['train']['label']),
+                                         require_elmo_ids=False,
+                                         train_char_perturbation_weight=0.0,
+                                         train_word_perturbation_weight=0.0,
+                                         val_char_perturbation_rate=5.0,
+                                         val_word_perturbation_rate=0.0
+                                         )
     train_set, val_set = train_val_test_split(train_set, pct_train=0.8, pct_val=0.2)
     test_set = PerturbedSequenceDataset(all_data['test']['text'], torch.tensor(all_data['test']['label']),
                                         require_elmo_ids=False)
