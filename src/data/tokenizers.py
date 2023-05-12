@@ -3,6 +3,9 @@ import random
 import torch
 
 test_seqs = ['this is a test', 'this is another test']
+
+
+# todo: can this library be removed?
 class LMSpellcheckderTokenizer:
     def __init__(self, vocab):
         characters = [*'abcdefghijklmnopqrstuvwxyz']
@@ -38,6 +41,8 @@ class LMSpellcheckderTokenizer:
         x = torch.arange(0, n)
         y = x.view(-1, 1)
         mask = torch.where(x <= y, 1, 0)
+
+
 class Tokenizer:
     def __init__(self, vocab):
         characters = [*'abcdefghijklmnopqrstuvwxyz']
@@ -61,6 +66,7 @@ class Tokenizer:
 
     def __call__(self, words):
         return self.tokenize_chars(words)
+
     def tokenize_chars(self, word):
         if isinstance(word, str):
             words = [word]
@@ -77,6 +83,7 @@ class Tokenizer:
 
         tokens = torch.tensor(sequences).squeeze()
         return tokens
+
     def detokenize(self, tokenized_words):
         skip = set(self.char_tokens['CLS'], self.char_tokens['PAD'])
         words = []

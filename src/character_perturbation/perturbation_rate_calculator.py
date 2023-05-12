@@ -17,6 +17,10 @@ how to interpret each type of perturbation
 
 
 class PerturbationCalculator:
+    """
+    Intakes a CSV of text and will determine against the original text the types and number of perturbations.
+    Output will be stored for use by the CharacterPerturbationHandler for model training.
+    """
 
     def __init__(self, log_directory: str, default_cnt: Union[int, float] = 0, alphanumerics_only: bool = False):
 

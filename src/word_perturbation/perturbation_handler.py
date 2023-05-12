@@ -8,11 +8,14 @@ from typing import List, Tuple
 
 
 class WordPerturbationHandler:
+    """
+    Handles keyword replacement with synonyms as a form of perturbation
+    """
 
-    def __init__(self, perturbation_chance: float = 0.15, verbose: bool = False):
+    def __init__(self, perturbation_rate: float = 0.15, verbose: bool = False):
 
-        assert 0 <= perturbation_chance <= 1, 'Perturbation chance needs to be between 0 and 1'
-        self.perturbation_chance = perturbation_chance
+        assert 0 <= perturbation_rate <= 1, 'Perturbation chance needs to be between 0 and 1'
+        self.perturbation_rate = perturbation_rate
         self.verbose = verbose
         self.replaceable_parts_of_speech = [
             'CD', 'JJ', 'JJR', 'JJS', 'NN', 'NNS', 'RB', 'RBR', 'RBS'
@@ -26,7 +29,7 @@ class WordPerturbationHandler:
 
         r = random.random()
         next_word = w
-        if r <= self.perturbation_chance and part_of_speech in self.replaceable_parts_of_speech:
+        if r <= self.perturbation_rate and part_of_speech in self.replaceable_parts_of_speech:
             synonyms = self.generate_all_synonyms_for_word(w)
             next_word = choice(synonyms)
 
@@ -84,7 +87,7 @@ if __name__ == '__main__':
     people cared decided make movie way well done adam jones crew'''
     repeated_s = 'movie movie movie movie movie movie movie'
 
-    handler = WordPerturbationHandler(perturbation_chance=0.5)
+    handler = WordPerturbationHandler(perturbation_rate=0.5)
 
     print('original sentence:', test_s)
     print('perturbed sentence:', handler.perturb_text_with_synonyms(test_s))

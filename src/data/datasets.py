@@ -6,7 +6,7 @@ from transformers import BertTokenizer
 from tokenizers import *
 from src.character_perturbation.perturbation_handler import *
 from torch.nn.functional import pad
-from src.word_perturbation.perturbation_handler import perturb_text_with_synonyms
+from src.word_perturbation.perturbation_handler import WordPerturbationHandler
 
 
 class CustomDataset(Dataset):
@@ -37,15 +37,19 @@ class PerturbedSequenceDataset(Dataset):
     """"
     """
 
-    def __init__(self,
-                 data,
-                 labels,
-                 log_directory='./logs/character_perturbation',
-                 word_perturbation_rate=0.0,
-                 perturb_characters=True,
-                 tokenizer=BertTokenizer.from_pretrained('bert-base-uncased'),
-                 require_elmo_ids=True):
-        self.handler = CharacterPerturbationHandler(log_directory=log_directory)
+    def __init__(
+            self,
+             data,
+             labels,
+             log_directory='./logs/character_perturbation',
+             word_perturbation_rate=0.0,
+             perturb_characters=True,
+             tokenizer=BertTokenizer.from_pretrained('bert-base-uncased'),
+             require_elmo_ids=True
+    ):
+
+        self.char_handler = CharacterPerturbationHandler(log_directory=log_directory)
+        self.word_handler = WordPerturbationHandler(perturbation_rate=word_perturbation_rate)
         self.data = data
         self.labels = labels
         self.perturb_characters = perturb_characters
@@ -60,9 +64,9 @@ class PerturbedSequenceDataset(Dataset):
         text = self.data[idx]
 
         if self.word_perturbation_rate > 0:
-            text = perturb_text_with_synonyms(text, self.word_perturbation_rate)
+            text = self.word_handler.perturb_text_with_synonyms(text)
         if self.perturb_characters:
-            text = self.handler.perturb_string(text)
+            text = self.char_handler.perturb_string(text)
         if self.tokenizer:
             encoded_input = self.tokenizer(text, return_tensors='pt')
             input_ids = encoded_input['input_ids'].squeeze(0)
@@ -95,9 +99,9 @@ class PerturbedSequenceDataset(Dataset):
                  val_char_perturbation_rate=5.0,
                  tokenizer=BertTokenizer.from_pretrained('bert-base-uncased'),
                  require_elmo_ids=True):
-        self.handler_train = CharacterPerturbationHandler(log_directory=log_directory,
+        self.char_handler_train = CharacterPerturbationHandler(log_directory=log_directory,
                                                      perturbation_weight=train_char_perturbation_rate)
-        self.handler_val = CharacterPerturbationHandler(log_directory=log_directory,
+        self.char_handler_val = CharacterPerturbationHandler(log_directory=log_directory,
                                                    perturbation_weight=val_char_perturbation_rate)
         self.data = data
         self.labels = labels
@@ -114,13 +118,13 @@ class PerturbedSequenceDataset(Dataset):
         label = self.labels[idx]
         text = self.data[idx]
         if self.word_perturbation_rate > 0:
-            text = perturb_text_with_synonyms(text, self.word_perturbation_rate)
+            text = self.word_handler.perturb_text_with_synonyms(text)
         if not self.eval_mode:
             if self.char_perturbation_rate > 0:
-                text = self.handler_train.perturb_string(text)
+                text = self.char_handler_train.perturb_string(text)
         else:
             if self.val_char_perturbation_rate > 0:
-                text = self.handler_val.perturb_string(text)
+                text = self.char_handler_val.perturb_string(text)
         if self.tokenizer:
             encoded_input = self.tokenizer(text, return_tensors='pt')
             input_ids = encoded_input['input_ids'].squeeze(0)
