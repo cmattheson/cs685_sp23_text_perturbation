@@ -9,13 +9,12 @@ Original file is located at
 import random
 
 import nltk
+from random import randint, seed, choice
+from nltk.corpus import wordnet
 
 nltk.download('wordnet', quiet=True)
 nltk.download('punkt', quiet=True)
 nltk.download('averaged_perceptron_tagger', quiet=True)
-
-from random import randint, seed, choice
-from nltk.corpus import wordnet
 
 
 # seed(1)
@@ -43,7 +42,7 @@ class SynonymReplacementHandler:
 
     # This is the main function wich needs to be called. Will take string as input and gives pertub string as output.
     # s = string and tries to perturb each word in the string with a probability of perturbation_chance
-    def sentence_perturbe(self, s: str) -> str:
+    def sentence_perturbe(self, s: str, verbose: bool = False) -> str:
         """
 
         Args:
@@ -55,7 +54,7 @@ class SynonymReplacementHandler:
 
         """
 
-        if (self.verbose):
+        if self.verbose:
             print('original sentence:', s)
 
         # sample_label = row[1]
@@ -71,16 +70,16 @@ class SynonymReplacementHandler:
             synonyms: set[str] = set()
             # check if we have already gathered synonyms for this word
             if current_word not in self.gathered_synonyms:
-                if (tag in ('CD', 'JJ', 'JJR', 'JJS', 'NN', 'NNS', 'RB', 'RBR',
-                            'RBS')):  # ----- Replace the word if it is a noun, adjective, or adverb
+                if tag in ('CD', 'JJ', 'JJR', 'JJS', 'NN', 'NNS', 'RB', 'RBR',
+                           'RBS'):  # ----- Replace the word if it is a noun, adjective, or adverb
                     for syn in wordnet.synsets(current_word):
-                        for l in syn.lemmas():
+                        for lemma in syn.lemmas():
                             # check that the synonym is not the same as the word itself
-                            if current_word != l.name():
+                            if current_word != lemma.name():
                                 if self.verbose:
-                                    print('current_word:', current_word, 'synonym:', l.name())
+                                    print('current_word:', current_word, 'synonym:', lemma.name())
                                 # check if the key for this word exists in the dictionary
-                                synonyms.add(l.name())
+                                synonyms.add(lemma.name())
                 if synonyms:
                     self.synonyms[current_word] = list(synonyms)
 
@@ -104,15 +103,15 @@ if __name__ == '__main__':
     This is a test script to test the functionality of the class.
     """
     handler = SynonymReplacementHandler(perturbation_chance=0.5)
-    s = "friend lent dvd got director festival think went warned technical aspects movie bit shaky writing good great " \
-        "maybe colored judgment admit liked moviethe standouts actors youssef kerkor really good ernie main character " \
-        "kind pathetic likable way adam jones also directed justin lane excellent roommates drive ernie mad bill " \
-        "character justin lane spends lot film dressed like panda far favorite seemed least onedimensional reminded " \
-        "old college roommate much called guy watching dvd really kind lovable funny acting good soso none bad also " \
-        "really liked vigilante duo ridiculous funnyim giving one high marks even though issues tell watch people " \
-        "cared decided make movie way well done adam jones crew"
-    print('original sentence:', s)
-    print('perturbed sentence:', handler.sentence_perturbe(s))
+    s1 = "friend lent dvd got director festival think went warned technical aspects movie bit shaky writing good great " \
+         "maybe colored judgment admit liked moviethe standouts actors youssef kerkor really good ernie main character " \
+         "kind pathetic likable way adam jones also directed justin lane excellent roommates drive ernie mad bill " \
+         "character justin lane spends lot film dressed like panda far favorite seemed least onedimensional reminded " \
+         "old college roommate much called guy watching dvd really kind lovable funny acting good soso none bad also " \
+         "really liked vigilante duo ridiculous funnyim giving one high marks even though issues tell watch people " \
+         "cared decided make movie way well done adam jones crew"
+    print('original sentence:', s1)
+    print('perturbed sentence:', handler.sentence_perturbe(s1))
     s2 = "movie movie movie movie movie movie movie"
     print('original sentence:', s2)
     print('perturbed sentence:', handler.sentence_perturbe(s2))
