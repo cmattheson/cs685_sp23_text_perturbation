@@ -35,7 +35,7 @@ class WordPerturbationHandler:
     @staticmethod
     def generate_unique_word_pos_pairs(sequence: str):
 
-        unique_word_tokens = set(nltk.word_tokenize(sequence))
+        unique_word_tokens = nltk.word_tokenize(sequence)
         tagged_pos_pairs: List[Tuple[str, str]] = nltk.pos_tag(unique_word_tokens)
 
         return tagged_pos_pairs
@@ -85,7 +85,6 @@ if __name__ == '__main__':
     repeated_s = 'movie movie movie movie movie movie movie'
 
     handler = WordPerturbationHandler(perturbation_chance=0.5)
-    handler.perturb_text_with_synonyms('Is this out of order?')
 
     print('original sentence:', s)
     print('perturbed sentence:', handler.perturb_text_with_synonyms(s))
