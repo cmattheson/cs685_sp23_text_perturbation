@@ -73,7 +73,7 @@ class CharacterReplacementGenerator:
         return self.matrix.columns[idx]
 
 
-class TextPerturbationHandler:
+class CharacterPerturbationHandler:
 
     def __init__(self, log_directory: str, perturbation_weight: float = 1):
 

@@ -1,6 +1,6 @@
 
 import os
-from src.character_perturbation.perturbation_calculator import PerturbationCalculator
+from src.character_perturbation.perturbation_rate_calculator import PerturbationCalculator
 
 
 def main():

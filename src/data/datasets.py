@@ -4,9 +4,9 @@ from torch.utils.data import Dataset
 from transformers import BertTokenizer
 
 from tokenizers import *
-from src.character_perturbation.text_perturbation import *
+from src.character_perturbation.perturbation_handler import *
 from torch.nn.functional import pad
-from src.word_perturbation.word_pertubation_version_synonym import perturb_text_with_synonyms
+from src.word_perturbation.perturbation_handler import perturb_text_with_synonyms
 
 
 class CustomDataset(Dataset):
@@ -45,7 +45,7 @@ class PerturbedSequenceDataset(Dataset):
                  perturb_characters=True,
                  tokenizer=BertTokenizer.from_pretrained('bert-base-uncased'),
                  require_elmo_ids=True):
-        self.handler = TextPerturbationHandler(log_directory=log_directory)
+        self.handler = CharacterPerturbationHandler(log_directory=log_directory)
         self.data = data
         self.labels = labels
         self.perturb_characters = perturb_characters
@@ -95,9 +95,9 @@ class PerturbedSequenceDataset(Dataset):
                  val_char_perturbation_rate=5.0,
                  tokenizer=BertTokenizer.from_pretrained('bert-base-uncased'),
                  require_elmo_ids=True):
-        self.handler_train = TextPerturbationHandler(log_directory=log_directory,
+        self.handler_train = CharacterPerturbationHandler(log_directory=log_directory,
                                                      perturbation_weight=train_char_perturbation_rate)
-        self.handler_val = TextPerturbationHandler(log_directory=log_directory,
+        self.handler_val = CharacterPerturbationHandler(log_directory=log_directory,
                                                    perturbation_weight=val_char_perturbation_rate)
         self.data = data
         self.labels = labels

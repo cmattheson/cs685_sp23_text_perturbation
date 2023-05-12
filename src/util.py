@@ -4,9 +4,6 @@ import os
 import matplotlib.pyplot as plt
 from typing import Dict, List, Union, Tuple
 
-# other project modules
-from src.character_perturbation.text_perturbation import TextPerturbationHandler
-
 
 def format_statistic_to_string(statistic: Union[float, List[float]]) -> str:
 
