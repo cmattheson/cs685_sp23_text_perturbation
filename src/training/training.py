@@ -9,6 +9,7 @@ from datasets import load_dataset
 
 from src.models.bert_models import ElmoBertModel
 from torch.utils.data.dataset import Subset as SubSet
+import os
 
 
 def train_val_test_split(dataset: torch.utils.data.Dataset,
@@ -23,6 +24,8 @@ def train_val_test_split(dataset: torch.utils.data.Dataset,
     Returns:
 
     """
+
+    # TODO: save the split to a file so that it can be reused
     from torch.utils.data import Dataset
     train_size = int(pct_train * len(dataset))
     val_size = len(dataset) - train_size
@@ -129,6 +132,7 @@ def train(model: nn.Module,
           record_training_statistics: bool = False,
           record_time_statistics: bool = False,
           model_save_path: str = None,
+          save_optimizer_state: bool = True,
           phases: dict[str, int] = None,
           **kwargs
           ) -> dict[str, list[float]] or None:
@@ -152,6 +156,9 @@ def train(model: nn.Module,
     """
     assert not phases or not num_epochs, 'Either specify the number of epochs or the phases'
     import time
+
+    os.makedirs(model_save_path, exist_ok=True)
+
 
     statistics = {'training_loss': [], 'validation_loss': [], 'test_loss': [],
                   'training_accuracy': [], 'validation_accuracy': [], 'test_accuracy': [],
@@ -225,8 +232,8 @@ def train(model: nn.Module,
                                                             criterion,
                                                             val_loader,
                                                             device=device)
-                dataset.train()  # set the eval flag to false
-                # reset the perturb_characters flag
+                dataset.train()  # set the eval flag to false. This is important because we are using a subset of the
+                # dataset, so the underlying dataset might be the same object as the training dataset.
 
                 statistics['validation_loss'].append(val_loss)
                 statistics['validation_accuracy'].append(val_accuracy)
@@ -250,7 +257,7 @@ def train(model: nn.Module,
         save the model parameters if required
 
         """
-        torch.save(model.state_dict(), model_save_path)
+        torch.save(model.state_dict(), model_save_path + 'model.pt')
 
     if record_time_statistics:
         statistics['total_time'] = total_time
@@ -258,6 +265,9 @@ def train(model: nn.Module,
         statistics['preprocessing_time'] = total_time - time_train - time_eval
 
     statistics = {k: v for k, v in statistics.items() if v}
+
+    if save_optimizer_state:
+        torch.save(optim.state_dict(), model_save_path + 'optimizer_state.pt')
 
     return statistics
 
@@ -288,6 +298,7 @@ if __name__ == '__main__':
                                        log_directory='../../logs/character_perturbation',
                                        train_word_perturbation_rate=0)
     train_set, val_set = train_val_test_split(dataset)
+
     train_loader = DataLoader(train_set, batch_size=32, num_workers=2, shuffle=True, persistent_workers=True)
     val_loader = DataLoader(val_set, batch_size=32, num_workers=2, shuffle=True, persistent_workers=True)
     # create a classifier head
