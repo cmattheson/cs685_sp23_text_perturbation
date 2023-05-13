@@ -27,7 +27,6 @@ def train_val_test_split(dataset: torch.utils.data.Dataset,
 
     """
 
-    # TODO: save the split to a file so that it can be reused
     from torch.utils.data import Dataset
     train_size = int(pct_train * len(dataset))
     val_size = len(dataset) - train_size
