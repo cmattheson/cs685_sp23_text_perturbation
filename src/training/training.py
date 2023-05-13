@@ -19,6 +19,8 @@ def train_val_test_split(dataset: torch.utils.data.Dataset,
     """
 
     Args:
+        pct_train: percentage of the dataset to use for training
+        pct_val: does nothing anymore, ignore
         dataset:
 
     Returns:
@@ -33,7 +35,6 @@ def train_val_test_split(dataset: torch.utils.data.Dataset,
     val_dataset: Dataset
     train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size])
     return train_dataset, val_dataset
-
 
 
 def prepare_data(data: tuple[tuple[str], torch.tensor],
@@ -158,7 +159,6 @@ def train(model: nn.Module,
     import time
 
     os.makedirs(model_save_path, exist_ok=True)
-
 
     statistics = {'training_loss': [], 'validation_loss': [], 'test_loss': [],
                   'training_accuracy': [], 'validation_accuracy': [], 'test_accuracy': [],
@@ -304,9 +304,14 @@ if __name__ == '__main__':
     # create a classifier head
     classifier_head = nn.Linear(768, num_classes)
     model = ClassifierModel(encoder=encoder, classifier=classifier_head)
-    phases = {'finetune': 1}
+
+    # phases represent the number of epochs to train each part of the model for. In this case, we are training the
+    # model for 1 warmup epoch, 1 epoch where only the elmo parameters are trained, and 1 epoch where all parameters
+    # are trained.
+    phases = {'warmup': 1, 'elmo': 1, 'finetune': 1}
     optim = torch.optim.Adam(model.parameters(), lr=0.00003)
 
+    # The train function trains the model and returns a dictionary of statistics.
     statistics = train(model, train_loader, criterion, optim, device='cuda',
                        val_loader=val_loader,
                        phases=phases,
@@ -314,4 +319,5 @@ if __name__ == '__main__':
                        model_save_path=f'../models/pretrained/bert_elmo_ag_news_classifier.pt',
                        record_time_statistics=True)
 
+    # save the statistics to a file for later use
     save_statistics('../../logs/experiments/example_experiment', statistics)
