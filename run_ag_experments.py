@@ -38,11 +38,11 @@ def run_ag_news_experiments() -> None:
     """
     # --------------------------------------------------------------------------------------------------------------------
     # do the concatenated model test
-    #model = ClassifierModel(Bert_Plus_Elmo_Concat(), nn.Linear(768, num_classes))
-    #optim = torch.optim.Adam(model.parameters(), lr=0.00003)
+    # model = ClassifierModel(Bert_Plus_Elmo_Concat(), nn.Linear(768, num_classes))
+    # optim = torch.optim.Adam(model.parameters(), lr=0.00003)
     phases = {'warmup': 1, 'elmo': 1, 'finetune': 5}
-
-    #run_experiment('ag_news_concatenated_bert_elmo_model', phases, model, optim, train_data, test_data=test_data,
+    # TODO: also try separate layernorm here and see if validation accuracy can be improved
+    # run_experiment('ag_news_concatenated_bert_elmo_model', phases, model, optim, train_data, test_data=test_data,
     #               train_char_perturbation_rate=5.0, val_char_perturbation_rate=5.0, require_elmo_ids=True)
 
     # --------------------------------------------------------------------------------------------------------------------
@@ -50,18 +50,32 @@ def run_ag_news_experiments() -> None:
     model = ClassifierModel(Bert_Plus_Elmo(), nn.Linear(768, num_classes))
     # optim = torch.optim.Adam(model.parameters(), lr=0.00003)
     # optim = torch.optim.Adam(model.parameters(), lr=0.000003) # 10x smaller learning rate
-    optim = torch.optim.Adam(model.parameters(), lr=0.000001) # 30x smaller learning rate
+    optim = torch.optim.Adam(model.parameters(), lr=0.000001)  # 30x smaller learning rate
     # phases = {'warmup': 1, 'elmo': 1, 'warmup': 1, 'elmo': 1, 'finetune': 5}  # add interleaved warmup and elmo phases
+    phases = {'warmup': 1, 'elmo': 1, 'finetune': 10}  # forget the interleaving: moar finetuning of full parameters
+    # TODO: try doing separate layernorm for bert and elmo
 
-    run_experiment('ag_news_additive_bert_elmo_model_lr_000001', phases, model, optim, train_data, test_data=test_data,
+    run_experiment('ag_news_additive_bert_elmo_model_lr_000001_interleaved', phases, model, optim, train_data,
+                   test_data=test_data,
                    train_char_perturbation_rate=5.0, val_char_perturbation_rate=5.0, require_elmo_ids=True)
+
 
 def run_ag_experiments_separate_layernorm() -> None:
     """
 
     Returns:
-
+    TODO: implement this experiment
     """
+
+# TODO: do some basic hyperparameter tuning. Try different learning rates, batch sizes, and number of epochs.
+
+# TODO: run a baseline with word perturbation on validation and no perturbation on train
+
+# TODO: run a baseline with word and char perturbation on validation and no perturbation on train
+
+# TODO: implement and run experiments with word perturbation (no char perturbation)
+
+# TODO: implement and run experiments using both word and char perturbation
 
 if __name__ == '__main__':
     all_data = load_dataset('src/data/ag_news.py')
@@ -73,6 +87,6 @@ if __name__ == '__main__':
     uncomment individual experiments to run them
     """
 
-    #run_baseline()
+    # run_baseline()
     # run_baseline_perturbed_test()
     run_ag_news_experiments()
