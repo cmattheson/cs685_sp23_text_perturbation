@@ -1,3 +1,5 @@
+import os
+
 import torch
 from typing import Iterable, Callable
 
@@ -12,8 +14,9 @@ from src.util import save_statistics
 def run_experiment(name: str, phases: dict[str, int],
                    model: ClassifierModel,
                    optim: torch.optim.Optimizer,
-                   train_data: dict[str, Iterable[str]],
-                   test_data: dict[str, Iterable[str]] = None,
+                   train_data: dict[str, Iterable[str]] or PerturbedSequenceDataset = None,
+                   val_data: dict[str, Iterable[str]] or PerturbedSequenceDataset = None,
+                   test_data: dict[str, Iterable[str]] or PerturbedSequenceDataset = None,
                    split: float = 0.8,
                    criterion: Callable = torch.nn.functional.cross_entropy,
                    require_elmo_ids=False,
@@ -22,12 +25,14 @@ def run_experiment(name: str, phases: dict[str, int],
                    val_char_perturbation_rate: float = 0.0,
                    val_word_perturbation_rate: float = 0.0,
                    batch_size: int = 32,
-                   num_workers: int = 2
+                   num_workers: int = 2,
+                   save_datasets=True
 
                    ) -> None:
     """
 
     Args:
+        val_data: the valadation data
         criterion: the criterion from nn.functional to use
         optim: the optimizer for the model
         batch_size: batch size
@@ -49,44 +54,99 @@ def run_experiment(name: str, phases: dict[str, int],
     """
 
     # train set with no perturbation
-    train_set = PerturbedSequenceDataset(train_data['text'],
-                                         torch.tensor(train_data['label']),
-                                         require_elmo_ids=require_elmo_ids,
-                                         train_char_perturbation_rate=train_char_perturbation_rate,
-                                         train_word_perturbation_rate=train_word_perturbation_rate,
-                                         val_char_perturbation_rate=val_char_perturbation_rate,
-                                         val_word_perturbation_rate=val_word_perturbation_rate)
-    val_loader = None
-    test_loader = None
 
-    if split < 1.0:
-        # if we have any validation data, split the train set into train and validation
-        train_set, val_set = train_val_test_split(train_set, pct_train=split, pct_val=1.0 - split)
-        val_loader = DataLoader(val_set, batch_size=batch_size, num_workers=num_workers, shuffle=True,
-                                persistent_workers=True)
-
-    train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=num_workers, shuffle=True,
-                              persistent_workers=True)
-
-    if test_data:
-        # if we have any test data, set up the test set and data loader
-        test_set = PerturbedSequenceDataset(test_data['text'],
-                                            torch.tensor(test_data['label']),
-                                            require_elmo_ids=require_elmo_ids,
-                                            train_char_perturbation_rate=train_char_perturbation_rate,
-                                            train_word_perturbation_rate=train_word_perturbation_rate,
+    val_set = None
+    if os.path.isfile(f'src/data/datasets/{name}_test.pt'):
+        print('Loading test set from file')
+        test_set = torch.load(f'src/data/datasets/{name}_test.pt')
+    else:
+        print('Creating test set from dict')
+        test_set = PerturbedSequenceDataset(test_data['text'], test_data['label'], require_elmo_ids=require_elmo_ids,
+                                            train_char_perturbation_rate=val_char_perturbation_rate,
+                                            train_word_perturbation_rate=val_word_perturbation_rate,
                                             val_char_perturbation_rate=val_char_perturbation_rate,
                                             val_word_perturbation_rate=val_word_perturbation_rate)
-        test_set.eval()
 
+    if os.path.isfile(f'src/data/datasets/{name}_train.pt') and os.path.isfile(
+            f'src/data/datasets/{name}_val.pt'):
+        print('Loading train and val sets from files')
+        train_set = torch.load(f'src/data/datasets/{name}_train.pt')
+        val_set = torch.load(f'src/data/datasets/{name}_val.pt')
+    else:
+        print('Creating datasets')  # create the datasets
+        if isinstance(train_data, dict):
+            train_set = PerturbedSequenceDataset(train_data['text'],
+                                                 torch.tensor(train_data['label']),
+                                                 require_elmo_ids=require_elmo_ids,
+                                                 train_char_perturbation_rate=train_char_perturbation_rate,
+                                                 train_word_perturbation_rate=train_word_perturbation_rate,
+                                                 val_char_perturbation_rate=val_char_perturbation_rate,
+                                                 val_word_perturbation_rate=val_word_perturbation_rate)
+        else:
+            train_set = train_data
+
+        if val_data:
+            if isinstance(val_data, dict):
+                val_set = PerturbedSequenceDataset(val_data['text'],
+                                                   torch.tensor(val_data['label']),
+                                                   require_elmo_ids=require_elmo_ids,
+                                                   train_char_perturbation_rate=train_char_perturbation_rate,
+                                                   train_word_perturbation_rate=train_word_perturbation_rate,
+                                                   val_char_perturbation_rate=val_char_perturbation_rate,
+                                                   val_word_perturbation_rate=val_word_perturbation_rate)
+            else:
+                val_set = val_data
+        elif split < 1.0:
+            # if we have any validation data, split the train set into train and validation
+            train_set, val_set = train_val_test_split(train_set, pct_train=split, pct_val=1.0 - split)
+
+        # save the created datasets
+        if save_datasets:
+            print('Saving datasets')
+            os.makedirs(f'src/data/datasets/', exist_ok=True)
+            if not os.path.isfile(f'src/data/datasets/{name}_train.pt'):
+                torch.save(train_set, f'src/data/datasets/{name}_train.pt')
+            if not os.path.isfile(f'src/data/datasets/{name}_val.pt'):
+                torch.save(val_set, f'src/data/datasets/{name}_val.pt')
+            if test_set:
+                if not os.path.isfile(f'src/data/datasets/{name}_test.pt'):
+                    torch.save(test_set, f'src/data/datasets/{name}_test.pt')
+        # end of dataset creation
+
+    val_loader = DataLoader(val_set, batch_size=batch_size, num_workers=num_workers, shuffle=True,
+                            persistent_workers=True, prefetch_factor=2)
+
+    train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=num_workers, shuffle=True,
+                              persistent_workers=True, prefetch_factor=2)
+
+    if test_data:
+        if isinstance(test_data, dict):
+            # if we have any test data, set up the test set and data loader
+            test_set = PerturbedSequenceDataset(test_data['text'],
+                                                torch.tensor(test_data['label']),
+                                                require_elmo_ids=require_elmo_ids,
+                                                train_char_perturbation_rate=train_char_perturbation_rate,
+                                                train_word_perturbation_rate=train_word_perturbation_rate,
+                                                val_char_perturbation_rate=val_char_perturbation_rate,
+                                                val_word_perturbation_rate=val_word_perturbation_rate)
+            test_set.eval()
+        else:
+            test_set = test_data
+            test_set.eval()
+
+    test_loader = None
+
+    if test_set:
         test_loader = DataLoader(test_set, batch_size=batch_size, num_workers=num_workers, shuffle=True,
-                                 persistent_workers=True)
+                                 persistent_workers=True, prefetch_factor=2)
+
+    # train the model and save the statistics
     statistics = train(model, train_loader, criterion, optim, device='cuda',
                        val_loader=val_loader,
                        test_loader=test_loader,
                        phases=phases,
                        record_training_statistics=True,
-                       model_save_path=f'src/models/pretrained/{name}_model.pt',
+                       model_save_path=f'src/models/pretrained/{name}/',
                        record_time_statistics=True)
 
     save_statistics(f'logs/experiments/{name}', statistics)
