@@ -95,6 +95,7 @@ def run_hyperparameter_optimization_concatenated_model() -> None:
     for lr in lrs:
         for val_perturbation_type in val_perturbation_types:
             if val_perturbation_type == 'char':
+                # test with char perturbations
                 for train_perturbation_rate in char_perturbation_rates:
                     name = f'ag_news_concatenated_bert_elmo_model_{val_perturbation_type}_{train_perturbation_rate}' \
                            f'_perturbed_hyperparameter_optimization_lr_{lr}'
@@ -105,6 +106,7 @@ def run_hyperparameter_optimization_concatenated_model() -> None:
                                    train_char_perturbation_rate=train_perturbation_rate,
                                    val_char_perturbation_rate=val_char_perturbation_rate, require_elmo_ids=True)
             elif val_perturbation_type == 'word':
+                # test with word perturbations
                 for train_perturbation_rate in train_word_perturbation_rates:
                     name = f'ag_news_concatenated_bert_elmo_model_{val_perturbation_type}_{train_perturbation_rate}' \
                            f'_perturbed_hyperparameter_optimization_lr_{lr}'
@@ -128,14 +130,15 @@ def run_hyperparameter_optimization_additive_model() -> None:
     """
     model_constructor = Bert_Plus_Elmo
     val_perturbation_types = ['char', 'word']
-    train_word_perturbation_rates = [0.0, 0.15, 0.3]
+    train_word_perturbation_rates = [0.0, 0.15, 0.3, 0.5]
     val_word_perturbation_rate = 0.3
-    char_perturbation_rates = [0.0, 1.0, 5.0]
+    char_perturbation_rates = [0.0, 1.0, 3, 5.0]
     val_char_perturbation_rate = 5.0
     lrs = [0.001, 0.00001, 0.000001, 0.0000001]
     for lr in lrs:
         for val_perturbation_type in val_perturbation_types:
             if val_perturbation_type == 'char':
+                # test with char perturbations
                 for train_perturbation_rate in char_perturbation_rates:
                     name = f'ag_news_concatenated_bert_elmo_model_{val_perturbation_type}_{train_perturbation_rate}' \
                            f'_perturbed_hyperparameter_optimization_lr_{lr}'
@@ -146,6 +149,7 @@ def run_hyperparameter_optimization_additive_model() -> None:
                                    train_char_perturbation_rate=train_perturbation_rate,
                                    val_char_perturbation_rate=val_char_perturbation_rate, require_elmo_ids=True)
             elif val_perturbation_type == 'word':
+                # test with word perturbations
                 for train_perturbation_rate in train_word_perturbation_rates:
                     name = f'ag_news_concatenated_bert_elmo_model_{val_perturbation_type}_{train_perturbation_rate}' \
                            f'_perturbed_hyperparameter_optimization_lr_{lr}'
