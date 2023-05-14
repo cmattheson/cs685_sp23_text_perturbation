@@ -9,6 +9,8 @@ from src.util import *
 from transformers import BertModel
 from src.experiments.experiment import *
 import os.path
+
+
 def run_dummy_experiment() -> None:
     model = ClassifierModel(BertModel.from_pretrained('bert-base-uncased'), nn.Linear(768, 2))
     optim = torch.optim.Adam(model.parameters(), lr=0.00003)
@@ -17,6 +19,7 @@ def run_dummy_experiment() -> None:
     val = {'text': ['hello world', 'hello world'], 'label': [0, 1]}
     test = {'text': ['hello world', 'hello world'], 'label': [0, 1]}
     run_experiment('dummy', phases, model, optim, tr, val, test, save_datasets=True)
+
 
 def run_baseline() -> None:
     """
@@ -100,7 +103,7 @@ if __name__ == '__main__':
     num_classes = len(set(all_data['train']['label']))
     train_data = all_data['train']
     test_data = all_data['test']
-    #run_dummy_experiment()
+    # run_dummy_experiment()
 
 
     run_ag_news_experiments()
