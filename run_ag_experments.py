@@ -129,7 +129,9 @@ def run_hyperparameter_optimization_additive_model() -> None:
     a good approximation and will save a lot of time.
     """
     model_constructor = Bert_Plus_Elmo
-    val_perturbation_types = ['char', 'word']
+    #val_perturbation_types = ['char', 'word']
+    #val_perturbation_types = ['char']
+    val_perturbation_types = ['word']
     train_word_perturbation_rates = [0.0, 0.15, 0.3, 0.5]
     val_word_perturbation_rate = 0.3
     char_perturbation_rates = [0.0, 1.0, 3, 5.0]
