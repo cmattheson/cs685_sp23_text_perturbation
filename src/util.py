@@ -65,7 +65,4 @@ def plot_statistics_from_files(statistics: list[str], labels: list[str], title: 
     plt.show()
     plt.close()
 
-def save_perturbed_data(text: list, label: list, perturbation_weight: float = 1, pathname: str = 'data/perturbed_data'):
-    perturbation_handler = TextPerturbationHandler()
-    os.makedirs(pathname, exist_ok=True)
-    perturbed_text = [perturbation_handler]
+

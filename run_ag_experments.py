@@ -72,6 +72,45 @@ def run_ag_news_experiments() -> None:
                    test_data=test_data,
                    train_char_perturbation_rate=5.0, val_char_perturbation_rate=5.0, require_elmo_ids=True)
 
+def run_final_ag_news_experiments() -> None:
+    """
+    Run the AG News experiments. Uncomment the individual experimental setups to run them.
+    Returns: None
+
+    """
+    # --------------------------------------------------------------------------------------------------------------------
+    # do the concatenated model test
+    # model = ClassifierModel(Bert_Plus_Elmo_Concat(), nn.Linear(768, num_classes))
+    # optim = torch.optim.Adam(model.parameters(), lr=0.00003)
+    phases = {'warmup': 1, 'elmo': 1, 'finetune': 10}
+
+    # TODO: set up final hyperparameters for the concatenated model with char perturbation
+    name = 'ag_news_concatenated_bert_elmo_model_char_perturbation_final'
+    lr = 0.000001
+    train_char_perturbation_rate=5.0
+    val_char_perturbation_rate=5.0
+    model = ClassifierModel(Bert_Plus_Elmo_Concat(), nn.Linear(768, num_classes))
+    optim = torch.optim.Adam(model.parameters(), lr=lr)
+
+    run_experiment(name, phases, model, optim, train_data,
+                   test_data=test_data,
+                   train_char_perturbation_rate=5.0, val_char_perturbation_rate=5.0, require_elmo_ids=True)
+
+    # TODO: set up final hyperparameters for the concatenated model with word perturbation
+    name = 'ag_news_concatenated_bert_elmo_model_word_perturbation_final'
+    run_experiment(name, phases, model, optim, train_data,
+                   test_data=test_data,
+                   train_char_perturbation_rate=5.0, val_char_perturbation_rate=5.0, require_elmo_ids=True)
+
+    # TODO: set up final hyperparameters for the concatenated model with char and word perturbation
+    name = 'ag_news_concatenated_bert_elmo_model_char_and_word_perturbation_final'
+
+    run_experiment(name, phases, model, optim, train_data,
+                   test_data=test_data,
+                   train_char_perturbation_rate=5.0, val_char_perturbation_rate=5.0, require_elmo_ids=True)
+
+
+
 
 def run_hyperparameter_optimization_concatenated_model() -> None:
     """
@@ -84,43 +123,49 @@ def run_hyperparameter_optimization_concatenated_model() -> None:
     a good approximation and will save a lot of time.
 
     """
+    print('Running hyperparameter optimization for concatenated model')
     num_classes = 4
     model_constructor = Bert_Plus_Elmo_Concat
-    val_perturbation_types = ['char', 'word']
-    train_word_perturbation_rates = [0.0, 0.15, 0.3]
+    #val_perturbation_types = ['char', 'word']
+    val_perturbation_types = ['char']
+
+    train_word_perturbation_rates = [0.15, 0.3]
     val_word_perturbation_rate = 0.3
-    char_perturbation_rates = [0.0, 1.0, 5.0]
+    char_perturbation_rates = [1.0, 5.0]
     val_char_perturbation_rate = 5.0
-    lrs = [0.001, 0.00001, 0.000001, 0.0000001]
+    lrs = [0.00003]
     for lr in lrs:
         for val_perturbation_type in val_perturbation_types:
             if val_perturbation_type == 'char':
                 # test with char perturbations
                 for train_perturbation_rate in char_perturbation_rates:
+                    print(f'Running hyperparameter optimization for char perturbation concatenated model with lr {lr}, perturbation rate {train_perturbation_rate}')
                     name = f'ag_news_concatenated_bert_elmo_model_{val_perturbation_type}_{train_perturbation_rate}' \
                            f'_perturbed_hyperparameter_optimization_lr_{lr}'
                     model = ClassifierModel(model_constructor(), nn.Linear(768, num_classes))
                     optim = torch.optim.Adam(model.parameters(), lr=lr)
                     phases = {'warmup': 1, 'elmo': 1, 'finetune': 5}
-                    run_experiment(name, phases, model, optim, train_data, test_data=test_data,
+                    run_experiment(name, phases, model, optim, train_data,
                                    train_char_perturbation_rate=train_perturbation_rate,
                                    val_char_perturbation_rate=val_char_perturbation_rate, require_elmo_ids=True)
             elif val_perturbation_type == 'word':
                 # test with word perturbations
                 for train_perturbation_rate in train_word_perturbation_rates:
+                    print(
+                        f'Running hyperparameter optimization for word perturbation concatenated model with lr {lr}, perturbation rate {train_perturbation_rate}')
+
                     name = f'ag_news_concatenated_bert_elmo_model_{val_perturbation_type}_{train_perturbation_rate}' \
                            f'_perturbed_hyperparameter_optimization_lr_{lr}'
                     model = ClassifierModel(model_constructor(), nn.Linear(768, num_classes))
                     optim = torch.optim.Adam(model.parameters(), lr=lr)
                     phases = {'warmup': 1, 'elmo': 1, 'finetune': 5}
-                    run_experiment(name, phases, model, optim, train_data, test_data=test_data,
+                    run_experiment(name, phases, model, optim, train_data,
                                    train_word_perturbation_rate=train_perturbation_rate,
                                    val_word_perturbation_rate=val_word_perturbation_rate, require_elmo_ids=True)
 
 
 def run_hyperparameter_optimization_additive_model() -> None:
     """
-    TODO: decide whether to layernorm embeddings for bert and elmo separately or not
     Returns: None
 
     Run procedure to select hyperparameters for the additive model. In order to select the best perturbation
@@ -128,21 +173,28 @@ def run_hyperparameter_optimization_additive_model() -> None:
     used to generate experimental results jointly. Although this approach is not necessarily optimal, it is hopefully
     a good approximation and will save a lot of time.
     """
-    model_constructor = Bert_Plus_Elmo
+    print('Running hyperparameter optimization for additive model')
+    num_classes = 4
+    model_constructor = Bert_Plus_Elmo_Separate_Layernorm
     #val_perturbation_types = ['char', 'word']
+    val_perturbation_types = ['char']
+
     #val_perturbation_types = ['char']
-    val_perturbation_types = ['word']
-    train_word_perturbation_rates = [0.0, 0.15, 0.3, 0.5]
+    #val_perturbation_types = ['word']
+    train_word_perturbation_rates = [0.15, 0.5]
     val_word_perturbation_rate = 0.3
-    char_perturbation_rates = [0.0, 1.0, 3, 5.0]
+    char_perturbation_rates = [1.0, 5.0]
     val_char_perturbation_rate = 5.0
-    lrs = [0.001, 0.00001, 0.000001, 0.0000001]
+    lrs = [0.000003]
     for lr in lrs:
         for val_perturbation_type in val_perturbation_types:
             if val_perturbation_type == 'char':
                 # test with char perturbations
                 for train_perturbation_rate in char_perturbation_rates:
-                    name = f'ag_news_concatenated_bert_elmo_model_{val_perturbation_type}_{train_perturbation_rate}' \
+                    print(
+                        f'Running hyperparameter optimization for char perturbation additive model with lr {lr}, perturbation rate {train_perturbation_rate}')
+
+                    name = f'ag_news_concatenated_bert_elmo_model_separate_layernorm{val_perturbation_type}_{train_perturbation_rate}' \
                            f'_perturbed_hyperparameter_optimization_lr_{lr}'
                     model = ClassifierModel(model_constructor(), nn.Linear(768, num_classes))
                     optim = torch.optim.Adam(model.parameters(), lr=lr)
@@ -153,7 +205,8 @@ def run_hyperparameter_optimization_additive_model() -> None:
             elif val_perturbation_type == 'word':
                 # test with word perturbations
                 for train_perturbation_rate in train_word_perturbation_rates:
-                    name = f'ag_news_concatenated_bert_elmo_model_{val_perturbation_type}_{train_perturbation_rate}' \
+                    print('Running hyperparameter optimization for word perturbation additive model with lr {lr}, perturbation rate {train_perturbation_rate}')
+                    name = f'ag_news_concatenated_bert_elmo_model_separate_layernorm{val_perturbation_type}_{train_perturbation_rate}' \
                            f'_perturbed_hyperparameter_optimization_lr_{lr}'
                     model = ClassifierModel(model_constructor(), nn.Linear(768, num_classes))
                     optim = torch.optim.Adam(model.parameters(), lr=lr)
@@ -212,4 +265,8 @@ if __name__ == '__main__':
 
     #run_ag_news_experiments()
 
-    run_ag_experiments_concat_model_separate_layernorm()
+    # run_ag_experiments_concat_model_separate_layernorm()
+
+    run_hyperparameter_optimization_concatenated_model()
+
+    run_hyperparameter_optimization_additive_model()
