@@ -57,6 +57,7 @@ def run_experiment(name: str, phases: dict[str, int],
     # train set with no perturbation
 
     val_set = None
+    test_set = None
     if os.path.isfile(f'src/data/datasets/{name}_test.pt'):
         print('Loading test set from file')
         test_set = torch.load(f'src/data/datasets/{name}_test.pt')
@@ -65,7 +66,7 @@ def run_experiment(name: str, phases: dict[str, int],
         print('using test set from args')
         test_set = test_data
         test_set.eval()
-    else:
+    elif test_data:
         print('Creating test set from dict')
         test_set = PerturbedSequenceDataset(test_data['text'], test_data['label'], require_elmo_ids=require_elmo_ids,
                                             train_char_perturbation_rate=val_char_perturbation_rate,

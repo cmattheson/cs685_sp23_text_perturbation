@@ -1,26 +1,23 @@
+import os
 
+def plot_hyperparam_optimization_accuracy():
+    statistics = []
+    labels = []
+    xlabel = 'Epoch'
+    ylabel = 'Accuracy'
+
+    for root, dirs, files in os.walk('logs/experiments/'):
+        if 'hyperparameter' in root:
+            for file in files:
+                title = 'Validation Accuracy'
+                if 'validation_accuracy' in file:
+                    labels.append(root[root.rfind('/ag_news') + 1:])
+                    statistics.append(root + '/' + file)
+    plot_statistics_from_files(statistics, labels, title, xlabel, ylabel, 'logs/figures/')
 
 
 
 if __name__ == '__main__':
     from src.util import *
     # plot training loss and accuracy for baseline model
-    statistics = ['logs/experiments/ag_news_bert_baseline_2/training_loss.txt']
-    labels = ['Training Loss']
-    xlabel = 'Iteration'
-    ylabel = 'Loss'
-
-    plot_statistics_from_files(statistics,  labels,"Baseline Training Loss", xlabel, ylabel, './')
-
-    statistics = ['logs/experiments/ag_news_bert_baseline_2/training_accuracy.txt']
-    labels = ['Training Accuracy']
-    plot_statistics_from_files(statistics,  labels,"Baseline Training Accuracy", xlabel, ylabel, './')
-
-    statistics = ['logs/experiments/ag_news_bert_baseline_2/validation_accuracy.txt',
-                  'logs/experiments/ag_news_bert_perturbed_2/validation_accuracy.txt',
-                  'logs/experiments/ag_news_bert_concat_2/validation_accuracy.txt',
-                  'logs/experiments/ag_news_bert_add_2/validation_accuracy.txt']
-    labels = ['Baseline Validation Accuracy', 'Perturbed Validation Accuracy', 'Concat Validation Accuracy', 'Add Validation Accuracy']
-    xlabel = 'Epoch'
-    ylabel = 'Accuracy'
-    plot_statistics_from_files(statistics,  labels, "Validation Accuracy", xlabel, ylabel, './')
+    plot_hyperparam_optimization_accuracy()
