@@ -1,7 +1,8 @@
 import os
 import matplotlib.pyplot as plt
 from src.character_perturbation.text_perturbation import TextPerturbationHandler
-
+import seaborn as sns
+import pandas as pd
 def save_statistics(pathname:str, statistics:dict[str, list[float]]):
     """
 
@@ -52,7 +53,10 @@ def plot_statistics(statistics: tuple[list[float]], labels: list[str], title: st
 
 def plot_statistics_from_files(statistics: list[str], labels: list[str], title: str, xlabel: str, ylabel: str, pathname: str):
     os.makedirs(pathname, exist_ok=True)
-    plt.figure(figsize=(10, 10))
+    sns.set_theme()
+
+    fig = plt.figure(figsize=(8, 8))
+    ax = plt.subplot(111)
     for stat in statistics:
         with open(stat, 'r') as f:
             s = f.read()
@@ -60,7 +64,7 @@ def plot_statistics_from_files(statistics: list[str], labels: list[str], title: 
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
-    plt.legend(labels)
+    plt.legend(labels, loc='lower center')
     #plt.savefig(os.path.join(pathname, f'{title}.png'))
     plt.show()
     plt.close()
