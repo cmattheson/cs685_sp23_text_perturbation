@@ -131,7 +131,7 @@ def run_hyperparameter_optimization_concatenated_model() -> None:
 
     train_word_perturbation_rates = [0.15, 0.3]
     val_word_perturbation_rate = 0.3
-    char_perturbation_rates = [5.0]
+    char_perturbation_rates = [1.00001]
     val_char_perturbation_rate = 5.0
     lrs = [1e-6]
     for lr in lrs:
