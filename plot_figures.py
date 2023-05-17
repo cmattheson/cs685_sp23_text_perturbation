@@ -58,11 +58,17 @@ def plot_final_validation_accuracy(experiment_type, save_path=None, hue='lr'):
 
 if __name__ == '__main__':
     from src.util import *
-    # plot training loss and accuracy for baseline model
-    plot_hyperparam_optimization_accuracy(['hyperparameter', 'concatenated', 'char'],'Validation Accuracy vs Epoch for concated model with different learning rates and char perturbation', save_path='logs/figures/hyperparameter_char_concat.png', hue=['char', 'lr'])
-    plot_hyperparam_optimization_accuracy(['hyperparameter', 'additive', 'char'],'Validation Accuracy vs Epoch for additive model with different learning rates and char perturbation', save_path='logs/figures/hyperparameter_char_additive.png', hue=['char', 'lr'])
 
-    plot_hyperparam_optimization_accuracy(['hyperparameter', 'additive', 'word'],'Validation Accuracy vs Epoch for additive model with different learning rates and char perturbation', save_path='logs/figures/hyperparameter_word_concat.png', hue=['word', 'lr'])
+    # baseline model hyperparameters
+    plot_hyperparam_optimization_accuracy(['baseline_model_lr'],'Validation Accuracy vs Epoch for baseline model with different learning rates', save_path='logs/figures/hyperparameter_baseline.png', hue=['lr'])
+
+    # concatenated model hyperparameters
+    plot_hyperparam_optimization_accuracy(['hyperparameter', 'concatenated', 'char'],'Validation Accuracy vs Epoch for concated model with different learning rates and char perturbation', save_path='logs/figures/hyperparameter_char_concat.png', hue=['char', 'lr'])
+    #plot_hyperparam_optimization_accuracy(['hyperparameter', 'concatenated', 'word'],'Validation Accuracy vs Epoch for concated model with different learning rates and word perturbation', save_path='logs/figures/hyperparameter_word_concat.png', hue=['word', 'lr'])
+
+    # additive model hyperparameters
+    plot_hyperparam_optimization_accuracy(['hyperparameter', 'additive', 'char'],'Validation Accuracy vs Epoch for additive model with different learning rates and char perturbation', save_path='logs/figures/hyperparameter_char_additive.png', hue=['char', 'lr'])
+    plot_hyperparam_optimization_accuracy(['hyperparameter', 'additive', 'word'],'Validation Accuracy vs Epoch for additive model with different learning rates and word perturbation', save_path='logs/figures/hyperparameter_word_additive.png', hue=['word', 'lr'])
 
     #plot_hyperparam_optimization_accuracy('baseline_model_lr', save_path='logs/figures/baseline_model_lr.png')
     #plot_final_validation_accuracy('baseline_model_lr', save_path='logs/figures/baseline_model_lr_final.png')
