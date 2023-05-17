@@ -1,7 +1,8 @@
 from src.experiments.experiment import *
 from src.models.bert_models import *
 from src.training.training import *
-
+from transformers import BertModel
+from src.util import *
 
 def run_dummy_experiment() -> None:
     """
@@ -9,7 +10,7 @@ def run_dummy_experiment() -> None:
     Returns:
 
     """
-    model = ClassifierModel(BertModel.from_pretrained('bert-base-uncased'), nn.Linear(768, 2))
+    model = ClassifierModel(BertModel.from_pretrained('bert-base-uncased'), nn.Linear(768, 4))
     optim = torch.optim.Adam(model.parameters(), lr=0.00003)
     phases = {'warmup': 1}
     tr = {'text': ['hello world', 'hello world'], 'label': [0, 1]}
@@ -17,10 +18,41 @@ def run_dummy_experiment() -> None:
     test = {'text': ['hello world', 'hello world'], 'label': [0, 1]}
     run_experiment('dummy', phases, model, optim, tr, val, test, save_datasets=True)
 
+def train_final_baseline_models_char():
+    # done 1
+    # char_perturbation_rates = [1, 3, 5]
+    char_perturbation_rates = [3, 5]
+    for char_perturbation_rate in char_perturbation_rates:
+        name = f'char-perturbation_{char_perturbation_rate}_final_baseline'
+        model = ClassifierModel(BertModel.from_pretrained('bert-base-uncased'), nn.Linear(768, 4))
+        optim = torch.optim.Adam(model.parameters(), lr=0.00003)
+        run_experiment(name, {'warmup': 1, 'finetune': 5}, model, optim, train_data, split=1.0,
+                       train_char_perturbation_rate=char_perturbation_rate)
+
+def train_final_baseline_models_word():
+    word_perturbation_rates = [0.15, 0.3, 0.5]
+    for word_perturbation_rate in word_perturbation_rates:
+        name = f'word-perturbation_{word_perturbation_rate}_final_baseline'
+        model = ClassifierModel(BertModel.from_pretrained('bert-base-uncased'), nn.Linear(768, 4))
+        optim = torch.optim.Adam(model.parameters(), lr=0.00003)
+        run_experiment(name, {'warmup': 1, 'finetune': 5}, model, optim, train_data, split=1.0,
+                       train_word_perturbation_rate=word_perturbation_rate)
+
+def train_final_baseline_models_char_word():
+    char_perturbation_rate = 5
+    word_perturbation_rate = 0.3
+    name = f'word-perturbation_{word_perturbation_rate}_char-perturbation_{char_perturbation_rate}_final_baseline'
+    model = ClassifierModel(BertModel.from_pretrained('bert-base-uncased'), nn.Linear(768, 4))
+    optim = torch.optim.Adam(model.parameters(), lr=0.00003)
+    run_experiment(name, {'warmup': 1, 'finetune': 5}, model, optim, train_data, split=1.0,
+                   train_char_perturbation_rate=char_perturbation_rate,
+                   train_word_perturbation_rate=word_perturbation_rate)
 
 def run_baseline() -> None:
     """
-    Run the baseline experiment on the ag_news dataset
+    Run the baseline experiment on the ag_news dataset. This runs the learning rate hyperparameter optimization tests
+    for baseline models.
+
     Returns: None
 
     """
@@ -236,13 +268,39 @@ def run_ag_experiments_concat_model_separate_layernorm() -> None:
     name = 'ag_news_concatenated_bert_elmo_model_layernorm_together'
     run_experiment(name, phases, model, optim, train_data, test_data=test_data, require_elmo_ids=True)
 
+def evaluate_models():
+    models = [
+              # basline models
+              'char-perturbation_1_final_baseline',
+              'char-perturbation_3_final_baseline',
+              'char-perturbation_5_final_baseline',
+              'word-perturbation_0.15_final_baseline',
+              'word-perturbation_0.3_final_baseline',
+              'word-perturbation_0.5_final_baseline',
+              'word-perturbation_0.3_char_perturbation_5_final_baseline',
+               # concatenated models
+              ]
+    test_char_perturbation_rates = [0, 1.0, 3, 5.0]
+    test_word_perturbation_rates = [0, 0.15, 0.3, 0.5]
+    test_data = pd.read_csv('src/data/datasets/ag_news_cleaned_test.csv')
 
-def run_ag_word_perturbation_experiments() -> None:
-    """
-    TODO: implement this
-    Returns:
+    for model_str in models:
+        model = ClassifierModel(Bert_Plus_Elmo_Concat(layer_norm_elmo_separately=False), nn.Linear(768, 4))
+        load_state_fix_params(model, f'src/models/pretrained/{model_str}/model.pt')
+        model.to('cuda')
+        for test_word_perturbation_rate in test_word_perturbation_rates:
+            for test_char_perturbation_rate in test_char_perturbation_rates:
+                test_set = PerturbedSequenceDataset(test_data['text'],
+                                                    torch.tensor(test_data['label']).to(torch.long),
+                                                    val_word_perturbation_rate=test_word_perturbation_rate,
+                                                    val_char_perturbation_rate=test_char_perturbation_rate)
+                test_set.eval()
+                test_loader = DataLoader(test_set, batch_size=32, shuffle=False)
+                criterion = torch.nn.functional.cross_entropy
+                loss, accuracy = compute_statistics(model, criterion, test_loader)
+                with open(f'logs/experiments/{model_str}/char_{test_char_perturbation_rate}_word_{test_word_perturbation_rate}_test_results.txt', 'w') as f:
+                    f.write(f'{loss}, {accuracy}')
 
-    """
 
 if __name__ == '__main__':
     all_data = load_dataset('src/data/ag_news.py')
@@ -259,4 +317,9 @@ if __name__ == '__main__':
 
     #run_hyperparameter_optimization_additive_model()
 
-    run_baseline()
+    #run_baseline()
+
+    #train_final_baseline_models_char()
+    train_final_baseline_models_word()
+    train_final_baseline_models_char_word()
+    # evaluate_models()

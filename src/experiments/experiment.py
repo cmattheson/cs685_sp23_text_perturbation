@@ -123,9 +123,11 @@ def run_experiment(name: str, phases: dict[str, int],
                     torch.save(test_set, f'src/data/datasets/{name}_test.pt')
         # end of dataset creation
 
-    val_loader = DataLoader(val_set, batch_size=batch_size, num_workers=num_workers, shuffle=True,
-                            persistent_workers=True, prefetch_factor=2)
-
+    if val_set:
+        val_loader = DataLoader(val_set, batch_size=batch_size, num_workers=num_workers, shuffle=True,
+                                persistent_workers=True, prefetch_factor=2)
+    else:
+        val_loader = None
     train_loader = DataLoader(train_set, batch_size=batch_size, num_workers=num_workers, shuffle=True,
                               persistent_workers=True, prefetch_factor=2)
 

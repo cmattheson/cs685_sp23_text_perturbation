@@ -15,6 +15,10 @@ from collections import OrderedDict
 from src.training.training import compute_statistics
 
 
+
+
+
+
 def run_final_ag_news_experiments(names, models, word_perturbation_rates, char_perturbation_rates,
                                   device='cuda') -> None:
     # evaluate on test set with char perturbation and word perturbation
@@ -63,6 +67,8 @@ def load_state_fix_params(model, path):
             # add the useless layernorm parameters. Yes, it's a hack, but it makes the model load correctly.
             new_state_dict['encoder.elmo_layernorm.weight'] = torch.ones(768)
             new_state_dict['encoder.elmo_layernorm.bias'] = torch.zeros(768)
+            model.encoder.layernorm_elmo_separately = False  # make sure the model doesn't try to actually use
+            # these parameters since the model the state dict was saved from doesn't use them
         model.load_state_dict(new_state_dict)
 
 if __name__ == '__main__':
@@ -102,15 +108,16 @@ if __name__ == '__main__':
 
     test_data = pd.read_csv('src/data/datasets/ag_news_cleaned_test.csv')
     state_dict = torch.load('src/models/model.pt')
-    model1 = ClassifierModel(Bert_Plus_Elmo_Concat(), classifier=nn.Linear(768, 4))
+    model2 = ClassifierModel(Bert_Plus_Elmo_Concat(), classifier=nn.Linear(768, 4))
 
-    load_state_fix_params(model1, 'src/models/model.pt')
+    load_state_fix_params(model, 'src/models/model.pt')
 
     #model2 = ClassifierModel(Bert_Plus_Elmo_Concat(layer_norm_elmo_separately=True), classifier=nn.Linear(768, 4))
     #model2.load_state_dict(torch.load(
     #    'src/models/pretrained/ag_news_concatenated_bert_elmo_model_char_5.0_perturbed_hyperparameter_optimization_lr_3e-05/model.pt'))
     model_names = 'concat_model', 'additive_model'
-    models = [model1]
+
+    models = [model]
     char_perturbation_rates = [0, 1, 2, 3, 4, 5]
     criterion = torch.nn.functional.cross_entropy
     device = 'cuda'
