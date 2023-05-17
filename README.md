@@ -16,6 +16,8 @@ This folder contains various code files related to experiments using BERT models
     `pip install datasets`
     
     `pip install transformers`
+    
+    `pip install allennlp==2.10.1`
 3.  Open the run_ag_experiments.py file.
 4.  Inside the file, you will find multiple function calls, each corresponding to a specific model. Choose the model you want to run by uncommenting the respective function call and commenting out other <br>
     a.  Concatenated <br>
