@@ -38,7 +38,7 @@ def plot_hyperparam_optimization_accuracy(keywords, title, save_path=None, hue='
 def plot_final_validation_accuracy(save_path=None, hue='lr', figure_word_perturb='0.3', figure_char_perturb='5.0'):
     sns.set_theme()
     data = pd.DataFrame()
-    title = f'Validation Accuracy of experimental models and baseline models trained with\n{figure_word_perturb}' \
+    title = f'Validation Accuracy of experimental models and baseline models with\n{figure_word_perturb}' \
             f' word perturbation and {figure_char_perturb} char perturbation'
     for root, dirs, files in os.walk('logs/experiments/test'):
             for file in files:
@@ -46,13 +46,16 @@ def plot_final_validation_accuracy(save_path=None, hue='lr', figure_word_perturb
                 train_perturb = ''
                 if 'ag_news' in root:
                     # treat this one specially, it is the concatenated model using 1.0 char perturbation
-                    train_perturb = '1.0 cpt on train'
+                    train_perturb = '1.0 cpt tr'
                 elif 'combined' in root:
-                    train_perturb = '0.3 wpt & 5.0 cpt on train'
+                    train_perturb = '0.3 wpt & 5.0 cpt tr'
                 elif 'char' in root:
-                    train_perturb = '5.0 cpt on train'
+                    train_perturb = '5.0 cpt tr'
                 else:
-                    train_perturb = '0.3 wpt on train'
+                    train_perturb = '0.3 wpt tr'
+
+                if 'baseline' in root:
+                    train_perturb += ' (bl)'
 
                 if 'char' in file and 'word' in file:
                     word_start = file.find('word') + len('word') + 1
