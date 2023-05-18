@@ -1,0 +1,46 @@
+C:\Users\cmattheson\PycharmProjects\nlp_robustness\venv\Scripts\python.exe C:/Users/cmattheson/PycharmProjects/nlp_robustness/run_ag_experments.py
+Found cached dataset ag_news (C:/Users/cmattheson/.cache/huggingface/datasets/ag_news/default/0.0.0/bc2bcb40336ace1a0374767fc29bb0296cdaf8a6da7298436239c54d79180548)
+100%|██████████| 2/2 [00:00<00:00, 333.00it/s]
+Running hyperparameter optimization for concatenated model
+Running hyperparameter optimization for char perturbation concatenated model with lr 1e-06, perturbation rate 5.0
+Some weights of the model checkpoint at bert-base-uncased were not used when initializing BertModel: ['cls.seq_relationship.bias', 'cls.predictions.transform.LayerNorm.weight', 'cls.predictions.transform.dense.bias', 'cls.predictions.bias', 'cls.seq_relationship.weight', 'cls.predictions.transform.dense.weight', 'cls.predictions.decoder.weight', 'cls.predictions.transform.LayerNorm.bias']
+- This IS expected if you are initializing BertModel from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
+- This IS NOT expected if you are initializing BertModel from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
+Loading train and val sets from files
+Using ElmoBertModel
+
+Phase: warmup
+  0%|          | 0/1000 [00:13<?, ?it/s]
+Traceback (most recent call last):
+  File "C:\Users\cmattheson\PycharmProjects\nlp_robustness\run_ag_experments.py", line 269, in <module>
+    run_hyperparameter_optimization_concatenated_model()
+  File "C:\Users\cmattheson\PycharmProjects\nlp_robustness\run_ag_experments.py", line 148, in run_hyperparameter_optimization_concatenated_model
+    run_experiment(name, phases, model, optim, train_data, batch_size=16,
+  File "C:\Users\cmattheson\PycharmProjects\nlp_robustness\src\experiments\experiment.py", line 139, in run_experiment
+    statistics = train(model, train_loader, criterion, optim, device='cuda',
+  File "C:\Users\cmattheson\PycharmProjects\nlp_robustness\src\training\training.py", line 185, in train
+    for i, data in enumerate(pbar):  # iterate over the perturbed sequences
+  File "C:\Users\cmattheson\PycharmProjects\nlp_robustness\venv\lib\site-packages\tqdm\std.py", line 1178, in __iter__
+    for obj in iterable:
+  File "C:\Users\cmattheson\PycharmProjects\nlp_robustness\venv\lib\site-packages\torch\utils\data\dataloader.py", line 652, in __next__
+    data = self._next_data()
+  File "C:\Users\cmattheson\PycharmProjects\nlp_robustness\venv\lib\site-packages\torch\utils\data\dataloader.py", line 1347, in _next_data
+    return self._process_data(data)
+  File "C:\Users\cmattheson\PycharmProjects\nlp_robustness\venv\lib\site-packages\torch\utils\data\dataloader.py", line 1373, in _process_data
+    data.reraise()
+  File "C:\Users\cmattheson\PycharmProjects\nlp_robustness\venv\lib\site-packages\torch\_utils.py", line 461, in reraise
+    raise exception
+TypeError: Caught TypeError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "C:\Users\cmattheson\PycharmProjects\nlp_robustness\venv\lib\site-packages\torch\utils\data\_utils\worker.py", line 302, in _worker_loop
+    data = fetcher.fetch(index)
+  File "C:\Users\cmattheson\PycharmProjects\nlp_robustness\venv\lib\site-packages\torch\utils\data\_utils\fetch.py", line 49, in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+  File "C:\Users\cmattheson\PycharmProjects\nlp_robustness\venv\lib\site-packages\torch\utils\data\_utils\fetch.py", line 49, in <listcomp>
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+  File "C:\Users\cmattheson\PycharmProjects\nlp_robustness\venv\lib\site-packages\torch\utils\data\dataset.py", line 290, in __getitem__
+    return self.dataset[self.indices[idx]]
+TypeError: 'RandomSampler' object is not subscriptable
+
+
+Process finished with exit code 1
