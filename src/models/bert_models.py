@@ -98,7 +98,7 @@ class Bert_Plus_Elmo_Concat(ElmoBertModel):
         super().__init__()
         self.layer_norm_elmo_separately = layer_norm_elmo_separately
         self.bert = BertModel.from_pretrained('bert-base-uncased')
-        self.linear = nn.Linear(768, 256)
+        # self.linear = nn.Linear(768, 256)  # this is unused and useless, but now it is in the saved state dicts so :(
         self.elmo_embedder = _ElmoCharacterEncoder(options_file=options_file,
                                                    weight_file=weight_file)
         self.elmo_layernorm = nn.LayerNorm(768)
@@ -163,7 +163,6 @@ class Bert_Plus_Elmo_Concat(ElmoBertModel):
 
         return output_representations
 
-
 class ClassifierModel(nn.Module):
     def __init__(self, encoder, classifier):
         super().__init__()
@@ -177,7 +176,7 @@ class ClassifierModel(nn.Module):
 
         Args:
             *args:
-            **kwargs: input_ids, elmo_input_ids, attention_mask, labels
+            **kwargs: input_ids, elmo_input_ids, attention_mask
 
         Returns:
 
