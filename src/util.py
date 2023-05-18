@@ -85,11 +85,11 @@ def load_state_fix_params(model, path):
 
     """
     try:
-        model.load_state_dict(torch.load(
-            path))
+        model.load_state_dict(torch.load(path))
     except:
         # fix the state dict
-        state_dict = torch.load('src/models/model.pt')
+        print(path)
+        state_dict = torch.load(path)
         new_state_dict = OrderedDict()
         for k, v in state_dict.items():
             if 'encoder.elmo_embedding' in k:

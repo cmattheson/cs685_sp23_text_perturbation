@@ -46,12 +46,13 @@ def train_final_concat_model_both(train_data):
     char_perturbation_rate = 5.0
     word_perturbation_rate = 0.3
     lr = 3e-5
-    name = f'word-perturbation_{word_perturbation_rate}_final_experiment'
+    name = f'combined-char-perturbation_{char_perturbation_rate}_word-perturbation_{word_perturbation_rate}_final_experiment'
     model = ClassifierModel(Bert_Plus_Elmo_Concat(), nn.Linear(768, 4))
     optim = torch.optim.Adam(model.parameters(), lr=lr)
     run_experiment(name, {'warmup': 1, 'elmo': 1, 'finetune': 5}, model, optim, train_data=train_data, split=1.0,
                    train_char_perturbation_rate=char_perturbation_rate,
                    train_word_perturbation_rate=word_perturbation_rate, require_elmo_ids=True)
+
 
 def train_final_baseline_models_char():
     # done 1
@@ -78,7 +79,7 @@ def train_final_baseline_models_word():
 def train_final_baseline_models_char_word():
     char_perturbation_rate = 5
     word_perturbation_rate = 0.3
-    name = f'word-perturbation_{word_perturbation_rate}_char-perturbation_{char_perturbation_rate}_final_baseline'
+    name = f'combined-perturbation_{word_perturbation_rate}_char-perturbation_{char_perturbation_rate}_final_baseline'
     model = ClassifierModel(BertModel.from_pretrained('bert-base-uncased'), nn.Linear(768, 4))
     optim = torch.optim.Adam(model.parameters(), lr=0.00003)
     run_experiment(name, {'warmup': 1, 'finetune': 5}, model, optim, train_data, split=1.0,
@@ -105,10 +106,6 @@ def run_baseline() -> None:
         phases = {'warmup': 1, 'finetune': 5}
 
         run_experiment(name, phases, model, optim, train_data)
-
-
-def eval_baseline() -> None:
-    pass
 
 
 def run_ag_news_experiments() -> None:
@@ -140,44 +137,6 @@ def run_ag_news_experiments() -> None:
     phases = {'warmup': 1, 'elmo': 1, 'finetune': 5}  # use smaller number of epochs again, try separate layernorm
 
     run_experiment('ag_news_additive_bert_elmo_model_separate_layernorm', phases, model, optim, train_data,
-                   test_data=test_data,
-                   train_char_perturbation_rate=5.0, val_char_perturbation_rate=5.0, require_elmo_ids=True)
-
-
-def run_final_ag_news_experiments() -> None:
-    """
-    Run the AG News experiments. Uncomment the individual experimental setups to run them.
-    Returns: None
-
-    """
-    # --------------------------------------------------------------------------------------------------------------------
-    # do the concatenated model test
-    # model = ClassifierModel(Bert_Plus_Elmo_Concat(), nn.Linear(768, num_classes))
-    # optim = torch.optim.Adam(model.parameters(), lr=0.00003)
-    phases = {'warmup': 1, 'elmo': 1, 'finetune': 10}
-
-    # TODO: set up final hyperparameters for the concatenated model with char perturbation
-    name = 'ag_news_concatenated_bert_elmo_model_char_perturbation_final'
-    lr = 0.000001
-    train_char_perturbation_rate = 5.0
-    val_char_perturbation_rate = 5.0
-    model = ClassifierModel(Bert_Plus_Elmo_Concat(), nn.Linear(768, num_classes))
-    optim = torch.optim.Adam(model.parameters(), lr=lr)
-
-    run_experiment(name, phases, model, optim, train_data,
-                   test_data=test_data,
-                   train_char_perturbation_rate=5.0, val_char_perturbation_rate=5.0, require_elmo_ids=True)
-
-    # TODO: set up final hyperparameters for the concatenated model with word perturbation
-    name = 'ag_news_concatenated_bert_elmo_model_word_perturbation_final'
-    run_experiment(name, phases, model, optim, train_data,
-                   test_data=test_data,
-                   train_char_perturbation_rate=5.0, val_char_perturbation_rate=5.0, require_elmo_ids=True)
-
-    # TODO: set up final hyperparameters for the concatenated model with char and word perturbation
-    name = 'ag_news_concatenated_bert_elmo_model_char_and_word_perturbation_final'
-
-    run_experiment(name, phases, model, optim, train_data,
                    test_data=test_data,
                    train_char_perturbation_rate=5.0, val_char_perturbation_rate=5.0, require_elmo_ids=True)
 
@@ -310,60 +269,169 @@ def run_ag_experiments_concat_model_separate_layernorm() -> None:
 def evaluate_models():
     models = [
         # commented out are already run
-        # concatenated models
-        # something is screwey with these models, use the old ones instead
+        # concatenated model
         # 'ag_news_concatenated_bert_elmo_model_char_1.0_perturbed_hyperparameter_optimization_lr_3e-05',
-        # 'ag_news_concatenated_bert_elmo_model_char_5.0_perturbed_hyperparameter_optimization_lr_3e-05',
-        # try this with one of the other saved models
+        # 'char-perturbation_5.0_final_experiment',
+        # 'word-perturbation_0.3_final_experiment',
 
-        # additive models
-        # 'ag_news_additive_bert_elmo_model_char_1.0_perturbed_hyperparameter_optimization_lr_3e-05',
-        'char-perturbation_5_final_baseline',
-        'ag_news_concatenated_bert_elmo_model_separate_layernormchar_5.0_perturbed_hyperparameter_optimization_lr_3e-06',
-        'ag_news_additive_bert_elmo_model_char_5.0_perturbed_hyperparameter_optimization_lr_3e-05',
         # basline models
-        'char-perturbation_1_final_baseline',
-        'char-perturbation_3_final_baseline',
-        'char-perturbation_5_final_baseline',
-        'word-perturbation_0.15_final_baseline',
-        'word-perturbation_0.3_final_baseline',
-        'word-perturbation_0.5_final_baseline',
-        'word-perturbation_0.3_char_perturbation_5_final_baseline',
+        # 'char-perturbation_0_final_baseline', # the model file is missing so this can't be run :(
+        # 'char-perturbation_1_final_baseline',
+        # 'char-perturbation_3_final_baseline',
+        # 'char-perturbation_5_final_baseline',
+        # 'word-perturbation_0.15_final_baseline',
+        # 'word-perturbation_0.3_final_baseline',
+        # 'word-perturbation_0.5_final_baseline',
+        # 'word-perturbation_0.3_char-perturbation_5_final_baseline',
+        'combined-char-perturbation_5.0_word-perturbation_0.3_final_experiment'
     ]
-    # test_char_perturbation_rates = [0, 1.0, 5.0]
-    test_char_perturbation_rates = [5.0]
-    test_word_perturbation_rates = [0, 0.3, 0.5]
+    test_char_perturbation_rates = [0, 1.0, 5.0]
+    test_word_perturbation_rates = [0, 0.15, 0.3]
     test_data = pd.read_csv('src/data/datasets/ag_news_cleaned_test.csv')
     for model_str in models:
+        model = None
+        encoder = None
+
         print(model_str)
-        # model = ClassifierModel(Bert_Plus_Elmo_Separate_Layernorm(), nn.Linear(768, 4))
-        model = ClassifierModel(BertModel.from_pretrained('bert-base-uncased'), nn.Linear(768, 4))
+
+        if 'baseline' in model_str:
+            encoder = BertModel.from_pretrained('bert-base-uncased')
+            model = ClassifierModel(encoder, nn.Linear(768, 4))
+        else:
+            encoder = Bert_Plus_Elmo_Concat()
+            model = ClassifierModel(encoder, nn.Linear(768, 4))
 
         load_state_fix_params(model, f'src/models/pretrained/{model_str}/model.pt')
         model.to('cuda')
         for test_word_perturbation_rate in test_word_perturbation_rates:
             for test_char_perturbation_rate in test_char_perturbation_rates:
-                test_set = PerturbedSequenceDataset(test_data['text'],
-                                                    torch.tensor(test_data['label']).to(torch.long),
-                                                    val_word_perturbation_rate=test_word_perturbation_rate,
-                                                    val_char_perturbation_rate=test_char_perturbation_rate,
-                                                    require_elmo_ids=False)
+                if isinstance(encoder, ElmoBertModel):
+                    test_set = PerturbedSequenceDataset(test_data['text'],
+                                                        torch.tensor(test_data['label']).to(torch.long),
+                                                        val_word_perturbation_rate=test_word_perturbation_rate,
+                                                        val_char_perturbation_rate=test_char_perturbation_rate,
+                                                        require_elmo_ids=True)  # require elmo ids
+                else:
+                    test_set = PerturbedSequenceDataset(test_data['text'],
+                                                        torch.tensor(test_data['label']).to(torch.long),
+                                                        val_word_perturbation_rate=test_word_perturbation_rate,
+                                                        val_char_perturbation_rate=test_char_perturbation_rate,
+                                                        require_elmo_ids=False)  # dont require elmo ids
                 test_set.eval()
                 test_loader = DataLoader(test_set, batch_size=32, shuffle=False)
                 criterion = torch.nn.functional.cross_entropy
                 loss, accuracy = compute_statistics(model, criterion, test_loader)
                 makedirs(f'logs/experiments/test/{model_str}/', exist_ok=True)
                 with open(
-                        f'logs/experiments/test/{model_str}/char_{test_char_perturbation_rate}_word_{test_word_perturbation_rate}_test_results_.txt',
+                        f'logs/experiments/test/{model_str}/char_{test_char_perturbation_rate}_word_{test_word_perturbation_rate}_test_results.txt',
                         'w') as f:
                     f.write(f'{loss}, {accuracy}')
+
+
+def find_incorrect_preds():
+    categories = ['World', 'Sports', 'Business', 'Sci/Tech']
+    models = [
+        # commented out are already run
+        # concatenated model
+        #'ag_news_concatenated_bert_elmo_model_char_1.0_perturbed_hyperparameter_optimization_lr_3e-05',
+        #'char-perturbation_5.0_final_experiment',
+        #'word-perturbation_0.3_final_experiment',
+
+        # basline models
+        #'char-perturbation_1_final_baseline',
+        #'char-perturbation_3_final_baseline',
+        #'char-perturbation_5_final_baseline',
+        #'word-perturbation_0.15_final_baseline',
+        #'word-perturbation_0.3_final_baseline',
+        #'word-perturbation_0.5_final_baseline',
+        'word-perturbation_0.3_char-perturbation_5_final_baseline',
+        'combined-char-perturbation_5.0_word-perturbation_0.3_final_experiment'
+    ]
+    test_char_perturbation_rates = [0, 5.0]
+    test_word_perturbation_rates = [0, 0.3]
+    test_data = pd.read_csv('src/data/datasets/ag_news_cleaned_test.csv')
+
+    for model_str in models:
+        model = None
+        encoder = None
+        incorrect = ['Predicted, Actual, Text']
+
+        print(model_str)
+
+        if 'baseline' in model_str:
+            encoder = BertModel.from_pretrained('bert-base-uncased')
+            model = ClassifierModel(encoder, nn.Linear(768, 4))
+        else:
+            encoder = Bert_Plus_Elmo_Concat()
+            model = ClassifierModel(encoder, nn.Linear(768, 4))
+
+        load_state_fix_params(model, f'src/models/pretrained/{model_str}/model.pt')
+        model.to('cuda')
+        test_char_perturbation_rate = 0
+        test_word_perturbation_rate = 0
+        if 'char' in model_str and 'word' in model_str:
+            test_char_perturbation_rate = 5.0
+            test_word_perturbation_rate = 0.3
+        elif 'char' in model_str or 'concatenated' in model_str:
+            test_char_perturbation_rate = 5.0
+            test_word_perturbation_rate = 0
+        elif 'word' in model_str:
+            test_char_perturbation_rate = 0
+            test_word_perturbation_rate = 0.3
+
+        if isinstance(encoder, BertModel):
+            test_set = PerturbedSequenceDataset(test_data['text'],
+                                                torch.tensor(test_data['label']).to(torch.long),
+                                                val_word_perturbation_rate=test_word_perturbation_rate,
+                                                val_char_perturbation_rate=test_char_perturbation_rate,
+                                                require_elmo_ids=False)  # dont require elmo ids
+        else:
+            test_set = PerturbedSequenceDataset(test_data['text'],
+                                                torch.tensor(test_data['label']).to(torch.long),
+                                                val_word_perturbation_rate=test_word_perturbation_rate,
+                                                val_char_perturbation_rate=test_char_perturbation_rate,
+                                                require_elmo_ids=True)  # require elmo ids
+        test_set.eval()
+        test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
+        num_incorrect = 0
+        it = 0
+        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+        for instance in test_loader:
+            if isinstance(encoder, BertModel):
+                input_ids, attention_mask, label = instance
+            else:
+                input_ids, elmo_input_ids, attention_mask, label = instance
+                elmo_input_ids = elmo_input_ids.to('cuda')
+
+            input_ids = input_ids.to('cuda')
+            original_text = tokenizer.decode(input_ids.squeeze(0).tolist(), skip_special_tokens=True)
+            attention_mask = attention_mask.to('cuda')
+            label = label.to('cuda')
+            if isinstance(encoder, BertModel):
+                logits = model(input_ids, attention_mask)
+            else:
+                logits = model(input_ids, elmo_input_ids, attention_mask)
+            predictions = logits.argmax(dim=-1)
+            if predictions != label:
+                print(f'iteration: {it}')
+                print(f'prediction: {categories[predictions]}, label: {categories[label]}, text: {original_text}')
+                incorrect.append(f'{categories[predictions]}, {categories[label]}, {original_text}')
+                num_incorrect += 1
+            if num_incorrect == 15:
+                break
+            it += 1
+
+        makedirs(f'logs/experiments/test/predictions/{model_str}/', exist_ok=True)
+        with open(f'logs/experiments/test/predictions/{model_str}/prediction_test_results.txt', 'w') as f:
+            f.write('\n'.join(incorrect))
 
 
 if __name__ == '__main__':
     all_data = load_dataset('src/data/ag_news.py')
     num_classes = len(set(all_data['train']['label']))
     train_data = all_data['train']
-    #test_data = all_data['test']
+
+    test_data = all_data['test']
     # run_dummy_experiment()
 
     # run_ag_news_experiments()
@@ -376,10 +444,11 @@ if __name__ == '__main__':
 
     # run_baseline()
 
-    # train_final_baseline_models_char()
-    # train_final_baseline_models_word()
-    # train_final_baseline_models_char_word()
+    train_final_baseline_models_char()
+    train_final_baseline_models_word()
+    train_final_baseline_models_char_word()
     train_final_concat_model_char(train_data)
     train_final_concat_model_word(train_data)
     train_final_concat_model_both(train_data)
-    #evaluate_models()
+    evaluate_models()
+    find_incorrect_preds()
